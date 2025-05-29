@@ -16,30 +16,43 @@ class Team {
   int[] dataIn;
   String[] messageArrayOut = {};
   String[] messageArrayIn = {};
+  int id;
 
-  Team(PApplet p, ControlP5 cp) {
+  Team(PApplet p, ControlP5 cp, int id_) {
     parent = p;
     cp5 = cp;
-    makeUI(10, 600);
+    id = id_;
+    makeUI(10 + 400 * id, 160);  // Offset UI horizontally per team
   }
 
   void makeUI(int x, int y) {
-    connectionButton = cp5.addButton("connectButtonFunction")
+    connectionButton = cp5.addButton("connectButtonFunction" + id)
       .setLabel("Connect")
       .setSize(70, 30)
-      .setPosition(x, y);
+      .setPosition(x, y)
+      .onClick(e -> connectButtonFunction());
 
-    portlist = cp5.addScrollableList("comportlistFunction")
+    portlist = cp5.addScrollableList("comportlistFunction" + id)
       .setLabel("select port")
       .setBarHeight(30)
       .setPosition(x+100, y)
       .setItemHeight(25);
+    portlist.onChange(e -> {
+      float val = e.getController().getValue();
+      comportlistFunction((int) val);
+    }
+    );
 
-    baudlist = cp5.addScrollableList("baudratelistFunction")
+    baudlist = cp5.addScrollableList("baudratelistFunction" + id)
       .setLabel("select baudrate")
       .setBarHeight(30)
       .setPosition(x+220, y)
       .setItemHeight(24);
+    baudlist.onChange(e -> {
+      float val = e.getController().getValue();
+      baudratelistFunction((int) val);
+    }
+    );
 
     baudlist.addItem("9600", 9600);
     baudlist.addItem("19200", 19200);
@@ -47,7 +60,7 @@ class Team {
     baudlist.addItem("57600", 57600);
     baudlist.addItem("115200", 115200);
 
-    receivedArea = cp5.addTextarea("receivedData")
+    receivedArea = cp5.addTextarea("receivedData" + id)
       .setSize(360, 140)
       .setPosition(x, y+250)
       .setColorBackground(80);

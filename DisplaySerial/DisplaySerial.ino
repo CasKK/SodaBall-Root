@@ -48,77 +48,55 @@ void setup() {
 
 void loop() {
   inputFromSerialStuff();
-
   if (!animatingDisplay || true) {
-    // Handle buttons (active LOW)
     if (digitalRead(pinAdd1) == LOW) {
       if (lastMillis[0] + debounceTime < millis()) {
-        rounds += 10;
-        display.displayClear();
-        display.displayReset();
-        animatingDisplay = false;
       }
       lastMillis[0] = millis();
     } else if (digitalRead(pinAdd05) == LOW) {
       if (lastMillis[1] + debounceTime < millis()) {
-        rounds += 5;
-        display.displayClear();
-        display.displayReset();
-        animatingDisplay = false;
       }
       lastMillis[1] = millis();
     } else if (digitalRead(pinSub1) == LOW) {
       if (lastMillis[2] + debounceTime < millis()) {
-        rounds -= 10;
-        display.displayClear();
-        display.displayReset();
-        animatingDisplay = false;
       }
       lastMillis[2] = millis();
     } else if (digitalRead(pinSub05) == LOW) {
       if (lastMillis[3] + debounceTime < millis()) {
-        rounds -= 5;
-        display.displayClear();
-        display.displayReset();
-        animatingDisplay = false;
       }
       lastMillis[3] = millis();
     }
     if (digitalRead(data[0] == 1) {
-      if (lastMillis[4] + debounceTime < millis()) {
-        rounds += 10;
-        display.displayClear();
-        display.displayReset();
-        animatingDisplay = false;
-      }
+      rounds += 10;
+      display.displayClear();
+      display.displayReset();
+      animatingDisplay = false;
+
       lastMillis[4] = millis();
     } else if (data[0] == 1) {
-      if (lastMillis[5] + debounceTime < millis()) {
-        rounds += 5;
-        display.displayClear();
-        display.displayReset();
-        animatingDisplay = false;
-      }
+      rounds += 5;
+      display.displayClear();
+      display.displayReset();
+      animatingDisplay = false;
+
       lastMillis[5] = millis();
     } else if (data[0] == 1) {
-      if (lastMillis[6] + debounceTime < millis()) {
-        rounds -= 10;
-        display.displayClear();
-        display.displayReset();
-        animatingDisplay = false;
-      }
+      rounds -= 10;
+      display.displayClear();
+      display.displayReset();
+      animatingDisplay = false;
+
       lastMillis[6] = millis();
     } else if (data[0] == 1) {
-      if (lastMillis[7] + debounceTime < millis()) {
-        rounds -= 5;
-        display.displayClear();
-        display.displayReset();
-        animatingDisplay = false;
-      }
+      rounds -= 5;
+      display.displayClear();
+      display.displayReset();
+      animatingDisplay = false;
+
       lastMillis[7] = millis();
     }
   }
-  
+
   if (rounds % 10 == 5) {
     if (animatingDisplay) {
       if (display.displayAnimate()) animatingDisplay = false;
@@ -138,7 +116,6 @@ void loop() {
     lastRounds = rounds;
     display.displayClear();
     display.displayReset();
-    //String msgga = String(rounds / 10);
     display.print(rounds / 10);
   }
   data[0] = 0;
