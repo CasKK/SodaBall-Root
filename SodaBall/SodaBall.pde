@@ -1,11 +1,18 @@
 import controlP5.*;
 import processing.serial.*;
 
+import processing.sound.*;
+
+SoundFile file;
+float volume = 0;
+boolean fadingIn = true;
+boolean playSoundVariable = false;
+
 ControlP5 cp5;
 Serial serial, serial1;
 Textarea receivedArea, receivedArea1;
 Println arduinoConsole, arduinoConsole1;
-Button connectionButton, connectionButton1, toggleConnectionUIButton;
+Button sub05Button1, connectionButton, connectionButton1, toggleConnectionUIButton;
 ScrollableList portlist, portlist1;
 ScrollableList baudlist, baudlist1;
 boolean connectButtonStatus = false; //Status of the connect button
@@ -39,6 +46,8 @@ void draw() {
 
 
   readData();
+
+  if (playSoundVariable) fadeSound();
 }
 
 
@@ -312,6 +321,10 @@ void editUI(int x, int y) {
     .setLabel("-.5")
     .setSize(60, 30)
     .setPosition(x + 70, y + 40);
+  sub05Button1 = cp5.addButton("sub05ButtonFunction1")
+    .setLabel("-.5")
+    .setSize(60, 30)
+    .setPosition(x + 170, y + 140);
 }
 
 void add1ButtonFunction() {
@@ -336,4 +349,25 @@ void sub05ButtonFunction() {
   dataOut[3] = 1;
   sendData();
   dataOut[3] = 0;
+}
+void sub05ButtonFunction1() {
+
+  playSoundVariable = !playSoundVariable;
+  if (playSoundVariable) {
+    volume = 1;
+    file = new SoundFile(this, "lyd1.mp3");
+    file.amp(volume);
+    file.play();
+  } else {
+    file.stop();
+  }
+}
+
+void fadeSound() {
+  volume -= 0.01;
+  file.amp(volume);
+  if (volume <= 0) {
+    playSoundVariable = false;
+    file.stop();
+  }
 }
