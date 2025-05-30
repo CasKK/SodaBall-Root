@@ -1,6 +1,5 @@
 import controlP5.*;
 import processing.serial.*;
-
 import processing.sound.*;
 
 SoundFile file;
@@ -10,25 +9,7 @@ boolean playSoundVariable = false;
 
 ControlP5 cp5;
 Team teamA, teamB;
-//Serial serial, serial1;
-//Textarea receivedArea, receivedArea1;
-//Println arduinoConsole, arduinoConsole1;
-//Button connectionButton, connectionButton1, toggleConnectionUIButton;
-//ScrollableList portlist, portlist1;
-//ScrollableList baudlist, baudlist1;
-//boolean connectButtonStatus = false; //Status of the connect button
-//boolean connectButtonStatus1 = false;
-//boolean toggleUIBool = false;
-//String selectedport, selectedport1;
-//int selectedbaudrate, selectedbaudrate1;
-
-//float[] lastSentValue = new float[15]; //Track what values was last sent to the arduino.
-
-//Edit UI
 Button sub05Button1, sub05Button, add05Button, sub1Button, add1Button;
-int[] dataOut = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-String[] messageArrayOut = {"a", "b"};
-String[] messageArrayIn = {"c", "d"};
 
 void setup() {
   size(1625, 900);
@@ -49,12 +30,19 @@ void draw() {
 
 
 
+  teamA.readData();
 
-  if (teamA.serial != null && teamA.serial.available() > 0) {
-    teamA.readData();
-  }
-  if (teamB.serial != null && teamB.serial.available() > 0) {
-    teamB.readData();
+  teamB.readData();
+
+  if (teamA.lastDataIn[0] != teamA.dataIn[0] || teamA.lastDataIn[1] != teamA.dataIn[1] || teamA.lastDataIn[2] != teamA.dataIn[2] || teamA.lastDataIn[3] != teamA.dataIn[3]) {
+    add1ButtonFunction();
+    if (teamA.dataIn[0] == 1) {
+      add1ButtonFunction();
+      //teamA.dataIn[0] = 0;
+    }
+    for (int i = 0; i < 12; i++) {
+      teamA.lastDataIn[i] = teamA.dataIn[i];
+    }
   }
 }
 

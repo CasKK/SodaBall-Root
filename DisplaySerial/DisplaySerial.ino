@@ -26,6 +26,8 @@ int debounceTime = 150;
 bool stringComplete = false;
 String inputString = "";
 uint16_t data[12];
+uint16_t dataOut[12];
+uint16_t lastDataOut[12];
 
 
 
@@ -48,54 +50,58 @@ void setup() {
 
 void loop() {
   inputFromSerialStuff();
-  if (!animatingDisplay || true) {
-    if (digitalRead(pinAdd1) == LOW) {
-      if (lastMillis[0] + debounceTime < millis()) {
-      }
-      lastMillis[0] = millis();
-    } else if (digitalRead(pinAdd05) == LOW) {
-      if (lastMillis[1] + debounceTime < millis()) {
-      }
-      lastMillis[1] = millis();
-    } else if (digitalRead(pinSub1) == LOW) {
-      if (lastMillis[2] + debounceTime < millis()) {
-      }
-      lastMillis[2] = millis();
-    } else if (digitalRead(pinSub05) == LOW) {
-      if (lastMillis[3] + debounceTime < millis()) {
-      }
-      lastMillis[3] = millis();
+
+  if (digitalRead(pinAdd1) == LOW) {
+    if (lastMillis[0] + debounceTime < millis()) {
+      dataOut[0] = 1;
     }
-    if (digitalRead(data[0] == 1) {
-      rounds += 10;
-      display.displayClear();
-      display.displayReset();
-      animatingDisplay = false;
-
-      lastMillis[4] = millis();
-    } else if (data[0] == 1) {
-      rounds += 5;
-      display.displayClear();
-      display.displayReset();
-      animatingDisplay = false;
-
-      lastMillis[5] = millis();
-    } else if (data[0] == 1) {
-      rounds -= 10;
-      display.displayClear();
-      display.displayReset();
-      animatingDisplay = false;
-
-      lastMillis[6] = millis();
-    } else if (data[0] == 1) {
-      rounds -= 5;
-      display.displayClear();
-      display.displayReset();
-      animatingDisplay = false;
-
-      lastMillis[7] = millis();
+    lastMillis[0] = millis();
+  } else if (digitalRead(pinAdd05) == LOW) {
+    if (lastMillis[1] + debounceTime < millis()) {
+      dataOut[1] = 1;
     }
+    lastMillis[1] = millis();
+  } else if (digitalRead(pinSub1) == LOW) {
+    if (lastMillis[2] + debounceTime < millis()) {
+      dataOut[2] = 1;
+    }
+    lastMillis[2] = millis();
+  } else if (digitalRead(pinSub05) == LOW) {
+    if (lastMillis[3] + debounceTime < millis()) {
+      dataOut[3] = 1;
+    }
+    lastMillis[3] = millis();
   }
+  if (data[0] == 1) {
+    rounds += 10;
+    display.displayClear();
+    display.displayReset();
+    animatingDisplay = false;
+
+    lastMillis[4] = millis();
+  } else if (data[2] == 1) {
+    rounds += 5;
+    display.displayClear();
+    display.displayReset();
+    animatingDisplay = false;
+
+    lastMillis[5] = millis();
+  } else if (data[1] == 1) {
+    rounds -= 10;
+    display.displayClear();
+    display.displayReset();
+    animatingDisplay = false;
+
+    lastMillis[6] = millis();
+  } else if (data[3] == 1) {
+    rounds -= 5;
+    display.displayClear();
+    display.displayReset();
+    animatingDisplay = false;
+
+    lastMillis[7] = millis();
+  }
+
 
   if (rounds % 10 == 5) {
     if (animatingDisplay) {
@@ -118,7 +124,11 @@ void loop() {
     display.displayReset();
     display.print(rounds / 10);
   }
+  sendData();
   data[0] = 0;
+  data[1] = 0;
+  data[2] = 0;
+  data[3] = 0;
 }
 
 void inputFromSerialStuff() {
@@ -153,5 +163,21 @@ void serialEvent() {
     if (inChar == '\n') {
       stringComplete = true;
     }
+  }
+}
+
+void sendData() {
+  if (memcmp(dataOut, lastDataOut, sizeof(dataOut)) != 0) {
+    String send_this = "";
+    for (int i = 0; i < 12; i++) {
+      send_this += String(dataOut[i]);
+      if (i < 11) send_this += ",";
+    }
+    Serial.println(send_this);
+    for (int i = 0; i < 12; i++) {
+      dataOut[i] = 0;
+      lastDataOut[i] = 0;
+    }
+    Serial.println("0,0,0,0,0,0,0,0,0,0,0,0");
   }
 }

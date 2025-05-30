@@ -13,7 +13,8 @@ class Team {
   String selectedport;
   int selectedbaudrate;
   int[] dataOut = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-  int[] dataIn;
+  int[] dataIn = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+  int[] lastDataIn = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   String[] messageArrayOut = {};
   String[] messageArrayIn = {};
   int id;
@@ -91,22 +92,25 @@ class Team {
 
   public void readData() {
     String data = "";
-    try {
-      while (serial.available() > 0) {
-        data = serial.readStringUntil(10);
-        if (data != null) {
-          receivedArea.setText("Arduino: " + data);
-          messageArrayIn = append(messageArrayIn, data);
+    if (serial != null) {
+      try {
+        if (serial.available() > 0) {
+          data = serial.readStringUntil(10);
+          if (data != null) {
+            receivedArea.setText("Arduino: " + data);
+            messageArrayIn = append(messageArrayIn, data);
+
+            String[] dataInTemp = split(data, ",");
+            int[] dataIn = new int[dataInTemp.length];
+            for (int i = 0; i < dataInTemp.length; i++) {
+              dataIn[i] = int(dataInTemp[i]);
+            }
+          }
         }
       }
-    }
-    catch (Exception e) {
-      println("Serial port error: " + e.getMessage());
-    }
-    String[] dataInTemp = split(data, ",");
-    dataIn = new int[dataInTemp.length];
-    for (int i = 0; i < dataInTemp.length; i++) {
-      dataIn[i] = int(dataInTemp[i]);
+      catch (Exception e) {
+        println("Serial port error: " + e.getMessage());
+      }
     }
   }
 
