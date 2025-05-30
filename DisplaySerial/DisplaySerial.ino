@@ -9,7 +9,7 @@
 MD_Parola display = MD_Parola(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
 
 // rounds is in tenths (e.g., 15 = 1.5)
-int rounds = 0;
+float rounds = 0;
 int lastRounds = 0;
 bool animatingDisplay = false;
 bool staticDisplay = false;
@@ -18,6 +18,7 @@ const int pinAdd1 = A0;
 const int pinAdd05 = A1;
 const int pinSub1 = A2;
 const int pinSub05 = A3;
+const int airRelay = 6;
 unsigned long lastMillis[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 int debounceTime = 150;
 
@@ -25,9 +26,9 @@ int debounceTime = 150;
 //Serial comm stuff:
 bool stringComplete = false;
 String inputString = "";
-uint16_t data[12];
+uint16_t dataIn[12];
 uint16_t dataOut[12];
-uint16_t lastDataOut[12];
+uint16_t lastDataOut[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 
 
@@ -38,6 +39,7 @@ void setup() {
   pinMode(pinAdd05, INPUT_PULLUP);
   pinMode(pinSub1, INPUT_PULLUP);
   pinMode(pinSub05, INPUT_PULLUP);
+  pinMode(airRelay, OUTPUT);
 
   display.begin();
   display.setIntensity(5);
@@ -49,7 +51,7 @@ void setup() {
 }
 
 void loop() {
-  inputFromSerialStuff();
+  parseInputFromSerial();
 
   if (digitalRead(pinAdd1) == LOW) {
     if (lastMillis[0] + debounceTime < millis()) {
@@ -72,37 +74,36 @@ void loop() {
     }
     lastMillis[3] = millis();
   }
-  if (data[0] == 1) {
+  /*if (dataIn[0] == 1) {
     rounds += 10;
     display.displayClear();
     display.displayReset();
     animatingDisplay = false;
-
-    lastMillis[4] = millis();
-  } else if (data[2] == 1) {
+  } else if (dataIn[2] == 1) {
     rounds += 5;
     display.displayClear();
     display.displayReset();
     animatingDisplay = false;
-
-    lastMillis[5] = millis();
-  } else if (data[1] == 1) {
+  } else if (dataIn[1] == 1) {
     rounds -= 10;
     display.displayClear();
     display.displayReset();
     animatingDisplay = false;
-
-    lastMillis[6] = millis();
-  } else if (data[3] == 1) {
+  } else if (dataIn[3] == 1) {
     rounds -= 5;
     display.displayClear();
     display.displayReset();
     animatingDisplay = false;
-
-    lastMillis[7] = millis();
+  }*/
+  if (dataIn[5] == 1) {
+    digitalWrite(airRelay, HIGH);
+  } else {
+    digitalWrite(airRelay, LOW);
   }
 
-
+  //float displayValue = rounds / 10.0;
+  updateDisplay(rounds);
+  /*
   if (rounds % 10 == 5) {
     if (animatingDisplay) {
       if (display.displayAnimate()) animatingDisplay = false;
@@ -124,14 +125,15 @@ void loop() {
     display.displayReset();
     display.print(rounds / 10);
   }
+  */
   sendData();
-  data[0] = 0;
-  data[1] = 0;
-  data[2] = 0;
-  data[3] = 0;
+  dataIn[0] = 0;
+  dataIn[1] = 0;
+  dataIn[2] = 0;
+  dataIn[3] = 0;
 }
 
-void inputFromSerialStuff() {
+void parseInputFromSerial() {
   if (stringComplete) {
     stringComplete = false;
     int idx = 0;
@@ -142,7 +144,7 @@ void inputFromSerialStuff() {
         String part = inputString.substring(start, i);
         part.trim();                          // remove spaces
         if (part.length() > 0 && idx < 12) {  // Only count if it's not empty
-          data[idx] = part.toInt();
+          dataIn[idx] = part.toInt();
           idx++;
         }
         start = i + 1;
@@ -154,6 +156,8 @@ void inputFromSerialStuff() {
       //Serial.println("ERROR: Expected 12 values, got " + String(idx));
     }
     inputString = "";
+    rounds = float(dataIn[4]) / 10;
+    animatingDisplay = false;
   }
 }
 void serialEvent() {
@@ -176,8 +180,38 @@ void sendData() {
     Serial.println(send_this);
     for (int i = 0; i < 12; i++) {
       dataOut[i] = 0;
-      lastDataOut[i] = 0;
+      //lastDataOut[i] = 0;
     }
-    Serial.println("0,0,0,0,0,0,0,0,0,0,0,0");
+    //Serial.println("0,0,0,0,0,0,0,0,0,0,0,0");
+  }
+}
+void updateDisplay(float value) {
+  static float lastDisplayedValue = -1.0;
+  // If it's the same value and not animating, skip updating
+  if (value == lastDisplayedValue && !animatingDisplay) return;
+  // Continue animation until complete
+  if (animatingDisplay) {
+    if (display.displayAnimate()) {
+      display.displayClear();
+      display.displayReset();
+      //animatingDisplay = false;
+      //lastDisplayedValue = value;
+    }
+    return;
+  }
+  display.displayClear();
+  // Static only for whole numbers < 10
+  if (value == floor(value) && value < 10.0) {
+    display.displayReset();
+    display.print((int)value);
+    staticDisplay = true;
+    animatingDisplay = false;
+    lastDisplayedValue = value;
+  } else {
+    char msg[8];
+    dtostrf(value, 4, 1, msg);  // 1 decimal place, space padded
+    display.displayText(msg, PA_CENTER, 100, 0, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+    animatingDisplay = true;
+    staticDisplay = false;
   }
 }

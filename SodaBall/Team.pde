@@ -15,15 +15,16 @@ class Team {
   int[] dataOut = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   int[] dataIn = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   int[] lastDataIn = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-  String[] messageArrayOut = {};
-  String[] messageArrayIn = {};
+  String[] messageArrayOut = {}; //Not in use
+  String[] messageArrayIn = {}; //Not in use
   int id;
+  int rounds = 0;
 
   Team(PApplet p, ControlP5 cp, int id_) {
     parent = p;
     cp5 = cp;
     id = id_;
-    makeUI(10 + 400 * id, 160);  // Offset UI horizontally per team
+    makeUI(10 + 400 * id, 160);
   }
 
   void makeUI(int x, int y) {
@@ -101,10 +102,11 @@ class Team {
             messageArrayIn = append(messageArrayIn, data);
 
             String[] dataInTemp = split(data, ",");
-            int[] dataIn = new int[dataInTemp.length];
+            dataIn = new int[dataInTemp.length];
             for (int i = 0; i < dataInTemp.length; i++) {
               dataIn[i] = int(dataInTemp[i]);
             }
+            
           }
         }
       }
@@ -113,6 +115,49 @@ class Team {
       }
     }
   }
+
+  public void updateValues() {
+    if (dataIn[0] == 1) {
+      rounds += bigCoinAirValue;
+      dataOut[4] = rounds;
+      dataIn[0] = 0;
+      sendData();
+    }
+    if (dataIn[1] == 1) {
+      rounds += smallCoinAirValue;
+      dataOut[4] = rounds;
+      dataIn[1] = 0;
+      sendData();
+    }
+    if (dataIn[2] == 1) {
+      if (!airOn) {
+        rounds -= bigCoinAirValue;
+        dataOut[4] = rounds;
+        dataOut[5] = 1;
+        sendData();
+        airOnFunction();
+        
+      }
+      dataIn[2] = 0;
+    }
+    if (dataIn[3] == 1) {
+      //rounds += bigCoinAirValue;
+      //dataIn[0] = 0;
+    }
+
+    //for (int i = 0; i < 12; i++) {
+    //  teamA.dataIn[i] = 0;
+    //}
+    
+  }
+
+
+
+
+
+
+
+
 
   void baudratelistFunction(int index) {
     String baudstring;
