@@ -19,6 +19,9 @@ class Team {
   String[] messageArrayIn = {}; //Not in use
   int id;
   int rounds = 0;
+  boolean goalMode = false;
+  double goalModeStartTime;
+  int goalTime = 1000; //Unit: ms
 
   Team(PApplet p, ControlP5 cp, int id_) {
     parent = p;
@@ -106,7 +109,6 @@ class Team {
             for (int i = 0; i < dataInTemp.length; i++) {
               dataIn[i] = int(dataInTemp[i]);
             }
-            
           }
         }
       }
@@ -117,46 +119,58 @@ class Team {
   }
 
   public void updateValues() {
+    boolean shouldSend = false;
+
     if (dataIn[0] == 1) {
       rounds += bigCoinAirValue;
-      dataOut[4] = rounds;
+      shouldSend = true;
       dataIn[0] = 0;
-      sendData();
     }
+
     if (dataIn[1] == 1) {
       rounds += smallCoinAirValue;
-      dataOut[4] = rounds;
+      shouldSend = true;
       dataIn[1] = 0;
-      sendData();
     }
+
     if (dataIn[2] == 1) {
-      if (!airOn) {
+      if (!airOn && rounds >= airThesholdValue) {
         rounds -= bigCoinAirValue;
-        dataOut[4] = rounds;
         dataOut[5] = 1;
-        sendData();
         airOnFunction();
-        
+        shouldSend = true;
       }
       dataIn[2] = 0;
     }
+
     if (dataIn[3] == 1) {
-      //rounds += bigCoinAirValue;
-      //dataIn[0] = 0;
+      goalFunction();
+      dataIn[3] = 0;
+      // Future logic can go here
     }
 
-    //for (int i = 0; i < 12; i++) {
-    //  teamA.dataIn[i] = 0;
-    //}
-    
+    if (shouldSend) {
+      dataOut[4] = rounds;
+      sendData();
+    }
   }
 
-
-
-
-
-
-
+  void goalFunction() {
+    if (!goalMode) {
+      goalMode = true;
+      goalModeStartTime = millis();
+    }
+    if (goalMode) {
+      fill(255, 0, 0);
+      rect(100, 100, 100, 100);
+      //Toolkit.getDefaultToolkit().beep();
+      BEEP.play();
+    }
+    if (millis() >= goalModeStartTime + goalTime) {
+      BEEP.stop();
+      goalMode = false;
+    }
+  }
 
 
   void baudratelistFunction(int index) {
