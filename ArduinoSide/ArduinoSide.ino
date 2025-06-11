@@ -5,15 +5,14 @@
 //--------Pins and other constants----------
 #define HARDWARE_TYPE MD_MAX72XX::FC16_HW  //For Display
 const int MAX_DEVICES = 1;                 //For display
-const int CS_PIN = 3;                      //For display
-const int trigPin = 10;                    //For ultrasound sensor output
-const int echoPin = 9;                     //For ultrasound sensor input
-const int pinAdd1 = A0;                    //For add big coin
-const int pinAdd05 = A1;                   //For add small coin
-const int pinSub1 = A2;                    //For start airRelay
+const int CS_PIN = 2;                      //For display
+const int lightSensorPin = A5;             //Light sensor lignal pin
+const int pinAdd1 = 8;                     //For add big coin
+const int pinAdd05 = 9;                    //For add small coin
+const int pinSub1 = 3;                     //For start airRelay
 const int pinSub05 = A3;                   //For nothing currently
-const int lightSensorPin = A5;      //Light sensor lignal pin
-const int airRelay = 6;                    //For airRelay
+const int airRelay = 7;                    //For airRelay
+const int smokeRelay = 6;                  //For airRelay
 
 //--------Objects----------
 MD_Parola display = MD_Parola(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);  //Display
@@ -26,15 +25,9 @@ bool animatingDisplay = false;
 bool staticDisplay = false;
 float rounds = 0;  //The displayed variable
 
-//---------Ultrasound variables---------
-unsigned long triggerTime = 0;
-unsigned long echoStartTime = 0;
-unsigned long echoEndTime = 0;
-unsigned long duration = 0;
-unsigned long lastMeasureTime = 0;
-float distance = 0.0;
-bool triggered = false;
-bool waitingForEcho = false;
+//Beam break
+int lightValue = 0.0;
+
 
 //-------Serial comm stuff--------
 String inputString = "";                                            //Raw String input.
@@ -46,13 +39,13 @@ uint16_t lastDataOut[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };  //Currently 
 
 void setup() {
   Serial.begin(9600);
-  pinMode(trigPin, OUTPUT);
-  pinMode(echoPin, INPUT);
+
   pinMode(pinAdd1, INPUT_PULLUP);
   pinMode(pinAdd05, INPUT_PULLUP);
   pinMode(pinSub1, INPUT_PULLUP);
   pinMode(pinSub05, INPUT_PULLUP);
   pinMode(airRelay, OUTPUT);
+  pinMode(smokeRelay, OUTPUT);
 
   display.begin();
   display.setIntensity(5);
@@ -87,99 +80,37 @@ void loop() {
     }
     lastMillis[3] = millis();
   }*/
-  if (distance < 61 || distance > 70) {
+
+  lightValue = analogRead(lightSensorPin);
+  if (lightValue > 200) {
     if (lastMillis[3] + 300 < millis()) {
       dataOut[3] = 1;
     }
     lastMillis[3] = millis();
   }
-  /*if (dataIn[0] == 1) {
-    rounds += 10;
-    display.displayClear();
-    display.displayReset();
-    animatingDisplay = false;
-  } else if (dataIn[2] == 1) {
-    rounds += 5;
-    display.displayClear();
-    display.displayReset();
-    animatingDisplay = false;
-  } else if (dataIn[1] == 1) {
-    rounds -= 10;
-    display.displayClear();
-    display.displayReset();
-    animatingDisplay = false;
-  } else if (dataIn[3] == 1) {
-    rounds -= 5;
-    display.displayClear();
-    display.displayReset();
-    animatingDisplay = false;
-  }*/
+
+  //Serial.println(analogRead(lightSensorPin));
+if (digitalRead(pinSub05) == LOW){
+  if (millis() % 2000 < 1000){
+    dataIn[5] = 1;
+  } else {
+    dataIn[5] = 0;
+  }}
+
   if (dataIn[5] == 1) {
     digitalWrite(airRelay, HIGH);
+    //Serial.println("air");
   } else {
     digitalWrite(airRelay, LOW);
   }
 
-  //float displayValue = rounds / 10.0;
+  if (dataIn[6] == 1) {
+    digitalWrite(smokeRelay, HIGH);
+  } else {
+    digitalWrite(smokeRelay, LOW);
+  }
+
   updateDisplay(rounds);
-  /*
-  if (rounds % 10 == 5) {
-    if (animatingDisplay) {
-      if (display.displayAnimate()) animatingDisplay = false;
-    } else {
-      display.displayClear();
-      char msg[6];
-      int whole = rounds / 10;
-      snprintf(msg, sizeof(msg), "%d.5", whole);
-      //Serial.println(msg);
-      display.displayText(msg, PA_CENTER, 100, 0, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
-      animatingDisplay = true;
-      staticDisplay = false;
-    }
-  } else if (rounds % 10 == 0 && !staticDisplay || rounds != lastRounds) {
-    staticDisplay = true;
-    animatingDisplay = false;
-    lastRounds = rounds;
-    display.displayClear();
-    display.displayReset();
-    display.print(rounds / 10);
-  }
-  */
-  //------------Ultrasound------------
-  unsigned long currentTime = micros();
-
-  // Every 50ms, start a new measurement
-  if (!triggered && currentTime - lastMeasureTime >= 30000) {
-    digitalWrite(trigPin, LOW);
-    delayMicroseconds(2);  // minimal blocking (2 us)
-    digitalWrite(trigPin, HIGH);
-    delayMicroseconds(10);  // 10 us trigger pulse
-    digitalWrite(trigPin, LOW);
-    triggerTime = micros();
-    triggered = true;
-    waitingForEcho = true;
-  }
-
-  // Wait for echo to go HIGH
-  if (triggered && waitingForEcho && digitalRead(echoPin) == HIGH) {
-    echoStartTime = micros();
-    waitingForEcho = false;
-  }
-
-  // Wait for echo to go LOW
-  if (triggered && !waitingForEcho && digitalRead(echoPin) == LOW) {
-    echoEndTime = micros();
-    duration = echoEndTime - echoStartTime;
-    distance = duration * 0.0343 / 2.0;  // Convert to cm
-    triggered = false;
-    lastMeasureTime = currentTime;
-
-    
-    Serial.print("Distance: ");
-    Serial.print(distance);
-    Serial.println(" cm");
-    
-  }
 
 
 
@@ -244,31 +175,50 @@ void sendData() {
 }
 void updateDisplay(float value) {
   static float lastDisplayedValue = -1.0;
-  // If it's the same value and not animating, skip updating
-  if (value == lastDisplayedValue && !animatingDisplay) return;
-  // Continue animation until complete
+  static bool lastWasStatic = false;
+
+  bool isStaticDisplay = (value == floor(value) && value < 10.0);
+
+  // Skip updating only if:
+  // - value is static
+  // - AND previously shown value was the same
+  // - AND it was shown statically
+  // - AND we are not animating
+  if (isStaticDisplay &&
+      lastWasStatic &&
+      value == lastDisplayedValue &&
+      !animatingDisplay) {
+    return;
+  }
+
+  // Handle scroll animation if in progress
   if (animatingDisplay) {
     if (display.displayAnimate()) {
       display.displayClear();
       display.displayReset();
-      //animatingDisplay = false;
-      //lastDisplayedValue = value;
+      animatingDisplay = false;
+      // Do NOT update lastDisplayedValue here — we want scrolling to repeat
     }
     return;
   }
+
   display.displayClear();
-  // Static only for whole numbers < 10
-  if (value == floor(value) && value < 10.0) {
+
+  if (isStaticDisplay) {
     display.displayReset();
     display.print((int)value);
     staticDisplay = true;
     animatingDisplay = false;
     lastDisplayedValue = value;
+    lastWasStatic = true;
   } else {
     char msg[8];
-    dtostrf(value, 4, 1, msg);  // 1 decimal place, space padded
+    dtostrf(value, 4, 1, msg);  // Format to 1 decimal place
     display.displayText(msg, PA_CENTER, 100, 0, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
     animatingDisplay = true;
     staticDisplay = false;
+    lastWasStatic = false;  // Important! Tells next static value to show even if value is same
+    // Don't update lastDisplayedValue — to keep scrolling
   }
 }
+
