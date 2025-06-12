@@ -15,7 +15,7 @@ int smallCoinAirValue = 5;
 int airThesholdValue = 10;
 boolean airOn = false;
 double airStartMillis;
-double oneAirTime = 10000;
+double oneAirTime = 1000;
 
 ControlP5 cp5;
 Team teamA, teamB;
@@ -26,14 +26,14 @@ void setup() {
 
   cp5 = new ControlP5(this);
 
-  teamA = new Team(this, cp5, 1);
-  teamB = new Team(this, cp5, 2);
+  teamA = new Team(this, cp5, 0);
+  teamB = new Team(this, cp5, 1);
   BEEP = new SoundFile(this, "BEEP.mp3");
   BEEP.amp(0.5);
 
-  
-  
-  editUI(600, 10);
+
+
+  //editUI(600, 10);
 }
 
 
@@ -58,79 +58,82 @@ void draw() {
 
 
 
-void editUI(int x, int y) {
-  add1Button = cp5.addButton("add1ButtonFunction")
-    .setLabel("+1")
-    .setSize(60, 30)
-    .setPosition(x, y);
-  sub1Button = cp5.addButton("sub1ButtonFunction")
-    .setLabel("-1")
-    .setSize(60, 30)
-    .setPosition(x + 70, y);
-  add05Button = cp5.addButton("add05ButtonFunction")
-    .setLabel("+.5")
-    .setSize(60, 30)
-    .setPosition(x, y + 40);
-  sub05Button = cp5.addButton("sub05ButtonFunction")
-    .setLabel("-.5")
-    .setSize(60, 30)
-    .setPosition(x + 70, y + 40);
-  soundShitterButton = cp5.addButton("soundShitter")
-    .setLabel("-.5")
-    .setSize(60, 30)
-    .setPosition(x + 170, y + 140);
-}
+//void editUI(int x, int y) {
+//  add1Button = cp5.addButton("add1ButtonFunction")
+//    .setLabel("+1")
+//    .setSize(60, 30)
+//    .setPosition(x, y);
+//  sub1Button = cp5.addButton("sub1ButtonFunction")
+//    .setLabel("-1")
+//    .setSize(60, 30)
+//    .setPosition(x + 70, y);
+//  add05Button = cp5.addButton("add05ButtonFunction")
+//    .setLabel("+.5")
+//    .setSize(60, 30)
+//    .setPosition(x, y + 40);
+//  sub05Button = cp5.addButton("sub05ButtonFunction")
+//    .setLabel("-.5")
+//    .setSize(60, 30)
+//    .setPosition(x + 70, y + 40);
+//  soundShitterButton = cp5.addButton("soundShitter")
+//    .setLabel("-.5")
+//    .setSize(60, 30)
+//    .setPosition(x + 170, y + 140);
+//}
 
-void add1ButtonFunction() {
-  teamA.dataIn[0] = 1;
-  //teamA.sendData();
-  //teamA.dataOut[0] = 0;
-}
+//void add1ButtonFunction() {
+//  teamA.dataIn[0] = 1;
+//  //teamA.sendData();
+//  //teamA.dataOut[0] = 0;
+//}
 
-void sub1ButtonFunction() {
-  //teamA.dataOut[1] = 1;
-  //teamA.sendData();
-  //teamA.dataOut[1] = 0;
-}
+//void sub1ButtonFunction() {
+//  teamA.dataIn[2] = 1;
+//  //teamA.dataOut[1] = 1;
+//  //teamA.sendData();
+//  //teamA.dataOut[1] = 0;
+//}
 
-void add05ButtonFunction() {
-  //teamA.dataOut[2] = 1;
-  //teamA.sendData();
-  //teamA.dataOut[2] = 0;
-}
+//void add05ButtonFunction() {
+//  teamB.dataIn[0] = 1;
+//  //teamA.dataOut[2] = 1;
+//  //teamA.sendData();
+//  //teamA.dataOut[2] = 0;
+//}
 
-void sub05ButtonFunction() {
-  //teamA.dataOut[3] = 1;
-  //teamA.sendData();
-  //teamA.dataOut[3] = 0;
-  //switch(swVar) {
-  //case 0:
-  //  teamA.dataOut[4] = 10;
-  //  teamA.sendData();
-  //  swVar += 1;
-  //  break;
-  //case 1:
-  //  teamA.dataOut[4] = 15;
-  //  teamA.sendData();
-  //  swVar += 1;
-  //  break;
-  //case 2:
-  //  teamA.dataOut[4] = 30;
-  //  teamA.sendData();
-  //  swVar += 1;
-  //  break;
-  //case 3:
-  //  teamA.dataOut[4] = 23;
-  //  teamA.sendData();
-  //  swVar += 1;
-  //  break;
-  //case 4:
-  //  teamA.dataOut[4] = 73;
-  //  teamA.sendData();
-  //  swVar = 0;
-  //  break;
-  //}
-}
+//void sub05ButtonFunction() {
+//  teamB.dataIn[2] = 1;
+//  //teamA.dataOut[3] = 1;
+//  //teamA.sendData();
+//  //teamA.dataOut[3] = 0;
+//  //switch(swVar) {
+//  //case 0:
+//  //  teamA.dataOut[4] = 10;
+//  //  teamA.sendData();
+//  //  swVar += 1;
+//  //  break;
+//  //case 1:
+//  //  teamA.dataOut[4] = 15;
+//  //  teamA.sendData();
+//  //  swVar += 1;
+//  //  break;
+//  //case 2:
+//  //  teamA.dataOut[4] = 30;
+//  //  teamA.sendData();
+//  //  swVar += 1;
+//  //  break;
+//  //case 3:
+//  //  teamA.dataOut[4] = 23;
+//  //  teamA.sendData();
+//  //  swVar += 1;
+//  //  break;
+//  //case 4:
+//  //  teamA.dataOut[4] = 73;
+//  //  teamA.sendData();
+//  //  swVar = 0;
+//  //  break;
+//  //}
+//}
 
 void airOnFunction() {
   if (!airOn) {

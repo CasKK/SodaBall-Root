@@ -11,8 +11,8 @@ const int pinAdd1 = 8;                     //For add big coin
 const int pinAdd05 = 9;                    //For add small coin
 const int pinSub1 = 3;                     //For start airRelay
 const int pinSub05 = A3;                   //For nothing currently
-const int airRelay = 7;                    //For airRelay
-const int smokeRelay = 6;                  //For airRelay
+const int airRelay = 4;//7;                    //For airRelay
+const int smokeRelay = 5;//6;                  //For airRelay
 
 //--------Objects----------
 MD_Parola display = MD_Parola(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);  //Display
@@ -20,7 +20,7 @@ MD_Parola display = MD_Parola(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);  //Display
 
 //--------Variables----------
 unsigned long lastMillis[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };  //Timetracking used for debounce
-int debounceTime = 150;                                    //Unit: ms
+int debounceTime = 250;                                    //Unit: ms
 bool animatingDisplay = false;
 bool staticDisplay = false;
 float rounds = 0;  //The displayed variable
@@ -62,16 +62,22 @@ void loop() {
   if (digitalRead(pinAdd1) == LOW) {
     if (lastMillis[0] + debounceTime < millis()) {
       dataOut[0] = 1;
+      //Serial.println("20");
     }
     lastMillis[0] = millis();
-  } else if (digitalRead(pinAdd05) == LOW) {
+  } 
+  if (digitalRead(pinAdd05) == LOW) {
     if (lastMillis[1] + debounceTime < millis()) {
       dataOut[1] = 1;
+      //Serial.println("10");
     }
     lastMillis[1] = millis();
-  } else if (digitalRead(pinSub1) == LOW) {
+  } 
+  if (digitalRead(pinSub1) == LOW) {
     if (lastMillis[2] + debounceTime < millis()) {
       dataOut[2] = 1;
+
+      //Serial.println("air");
     }
     lastMillis[2] = millis();
   } /*else if (digitalRead(pinSub05) == LOW) {
@@ -89,13 +95,6 @@ void loop() {
     lastMillis[3] = millis();
   }
 
-  //Serial.println(analogRead(lightSensorPin));
-if (digitalRead(pinSub05) == LOW){
-  if (millis() % 2000 < 1000){
-    dataIn[5] = 1;
-  } else {
-    dataIn[5] = 0;
-  }}
 
   if (dataIn[5] == 1) {
     digitalWrite(airRelay, HIGH);
@@ -184,10 +183,7 @@ void updateDisplay(float value) {
   // - AND previously shown value was the same
   // - AND it was shown statically
   // - AND we are not animating
-  if (isStaticDisplay &&
-      lastWasStatic &&
-      value == lastDisplayedValue &&
-      !animatingDisplay) {
+  if (isStaticDisplay && lastWasStatic && value == lastDisplayedValue && !animatingDisplay) {
     return;
   }
 
@@ -221,4 +217,3 @@ void updateDisplay(float value) {
     // Don't update lastDisplayedValue — to keep scrolling
   }
 }
-
