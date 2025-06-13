@@ -10,8 +10,8 @@ float volume = 0;
 boolean fadingIn = true;
 boolean playSoundVariable = false;
 int swVar = 0;
-int bigCoinAirValue = 10;
-int smallCoinAirValue = 5;
+int bigCoinAirValue = 20;
+int smallCoinAirValue = 10;
 int airThesholdValue = 10;
 boolean airOn = false;
 boolean smokeOn = false;
@@ -19,7 +19,7 @@ boolean hasSentSmokeSignal = false;
 int smokeTeamId = 0;
 double airStartMillis;
 double smokeStartMillis;
-double oneAirTime = 10000;
+double oneAirTime = 10000; //ms
 
 ControlP5 cp5;
 Team teamA, teamB;

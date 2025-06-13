@@ -7,7 +7,7 @@ class Team {
   Textarea receivedArea, receivedArea1;
   Println arduinoConsole, arduinoConsole1;
   Button connectionButton, connectionButton1;
-  Button goalButton, add05Button, sub1Button, add1Button;
+  Button goalButton, add05Button, sub1Button, add1Button, cancel1Button;
   ScrollableList portlist, portlist1;
   ScrollableList baudlist, baudlist1;
   boolean connectButtonStatus = false;
@@ -109,7 +109,7 @@ class Team {
     }
     );
     //baudlist1.setVisible(false);
-    
+
     baudlist1.addItem("9600", 9600);
     baudlist1.addItem("19200", 19200);
     baudlist1.addItem("38400", 38400);
@@ -310,6 +310,11 @@ class Team {
       .setSize(60, 30)
       .setPosition(x + 70, y + 40)
       .onClick(e -> goalButtonFunction());
+    cancel1Button = cp5.addButton("cancel1ButtonFunction" + id)
+      .setLabel("-1")
+      .setSize(60, 30)
+      .setPosition(x, y + 80)
+      .onClick(e -> cancel1ButtonFunction());
   }
   void add1ButtonFunction() {
     dataIn[0] = 1;
@@ -325,6 +330,15 @@ class Team {
 
   void goalButtonFunction() {
     dataIn[3] = 1;
+  }
+  void cancel1ButtonFunction() {
+    if (rounds >= 5) {
+      rounds = rounds - 5;
+    } else {
+      rounds = 0;
+    }
+    dataOut[4] = rounds;
+    sendData();
   }
 
   void reduceOtherVolumes() {
