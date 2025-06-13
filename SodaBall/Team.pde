@@ -187,6 +187,9 @@ class Team {
         rounds -= bigCoinAirValue;
         dataOut[5] = 1;
         airOnFunction();
+        smokeTeamId = id;
+        smokeOnFunction(id);
+        
         shouldSend = true;
       }
       dataIn[2] = 0;

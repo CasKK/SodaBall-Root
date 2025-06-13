@@ -14,8 +14,12 @@ int bigCoinAirValue = 10;
 int smallCoinAirValue = 5;
 int airThesholdValue = 10;
 boolean airOn = false;
+boolean smokeOn = false;
+boolean hasSentSmokeSignal = false;
+int smokeTeamId = 0;
 double airStartMillis;
-double oneAirTime = 1000;
+double smokeStartMillis;
+double oneAirTime = 10000;
 
 ControlP5 cp5;
 Team teamA, teamB;
@@ -52,6 +56,7 @@ void draw() {
   teamB.updateValues();
 
   if (airOn) airOnFunction();
+  if (smokeOn) smokeOnFunction(smokeTeamId);
   if (teamA.goalMode) teamA.goalFunction();
   if (teamB.goalMode) teamB.goalFunction();
 }
@@ -143,6 +148,27 @@ void airOnFunction() {
     airOn = false;
     teamA.dataOut[5] = 0;
     teamB.dataOut[5] = 0;
+    teamA.sendData();
+    teamB.sendData();
+  }
+}
+void smokeOnFunction (int id) {
+  if (!smokeOn) {
+    smokeStartMillis = millis();
+    smokeOn = true;
+  } else if (airStartMillis + 1000 <= millis() && airStartMillis + oneAirTime - 5000 > millis()) {
+    if (!hasSentSmokeSignal) {
+      hasSentSmokeSignal = true;
+      if (id == 0)teamA.dataOut[6] = 1;
+      if (id == 1)teamB.dataOut[6] = 1;
+      teamA.sendData();
+      teamB.sendData();
+    }
+  } else if (airStartMillis + oneAirTime - 5000 <= millis()) {
+    smokeOn = false;
+    hasSentSmokeSignal = false;
+    teamA.dataOut[6] = 0;
+    teamB.dataOut[6] = 0;
     teamA.sendData();
     teamB.sendData();
   }
