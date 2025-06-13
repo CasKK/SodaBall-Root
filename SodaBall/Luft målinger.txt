@@ -1,0 +1,46 @@
+
+Distance: 65.44 cm
+Distance: 126.57 cm
+0,0,0,1,0,0,0,0,0,0,0,0
+Distance: 67.02 cm
+Distance: 64.69 cm
+Distance: 64.35 cm
+Distance: 67.43 cm
+Distance: 70.45 cm
+Distance: 123.41 cm
+Distance: 65.38 cm
+Distance: 63.39 cm
+
+
+Distance: 64.35 cm
+Distance: 66.40 cm
+Distance: 122.38 cm
+0,0,0,1,0,0,0,0,0,0,0,0
+Distance: 64.83 cm
+Distance: 66.68 cm
+Distance: 65.38 cm
+Distance: 63.39 cm
+
+
+Distance: 65.38 cm
+Distance: 66.40 cm
+Distance: 64.21 cm
+Distance: 128.49 cm
+0,0,0,1,0,0,0,0,0,0,0,0
+Distance: 65.92 cm
+Distance: 128.97 cm
+Distance: 65.51 cm
+Distance: 64.42 cm
+Distance: 63.32 cm
+
+
+Distance: 66.34 cm
+Distance: 65.38 cm
+Distance: 199.90 cm
+0,0,0,1,0,0,0,0,0,0,0,0
+Distance: 65.92 cm
+Distance: 65.79 cm
+Distance: 68.39 cm
+Distance: 64.42 cm
+
+

@@ -1,40 +1,53 @@
-#include <MD_Parola.h>
-#include <MD_MAX72xx.h>
-#include <SPI.h>
+#include <MD_Parola.h>   //Display libary
+#include <MD_MAX72xx.h>  //Display libary
+#include <SPI.h>         //Display libary
 
-#define HARDWARE_TYPE MD_MAX72XX::FC16_HW
-#define MAX_DEVICES 1
-#define CS_PIN 3
+//--------Pins and other constants----------
+#define HARDWARE_TYPE MD_MAX72XX::FC16_HW  //For Display
+const int MAX_DEVICES = 1;                 //For display
+const int CS_PIN = 3;                      //For display
+const int trigPin = 10;                    //For ultrasound sensor output
+const int echoPin = 9;                     //For ultrasound sensor input
+const int pinAdd1 = A0;                    //For add big coin
+const int pinAdd05 = A1;                   //For add small coin
+const int pinSub1 = A2;                    //For start airRelay
+const int pinSub05 = A3;                   //For nothing currently
+const int lightSensorPin = A5;      //Light sensor lignal pin
+const int airRelay = 6;                    //For airRelay
 
-MD_Parola display = MD_Parola(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
+//--------Objects----------
+MD_Parola display = MD_Parola(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);  //Display
 
-// rounds is in tenths (e.g., 15 = 1.5)
-float rounds = 0;
-int lastRounds = 0;
+
+//--------Variables----------
+unsigned long lastMillis[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };  //Timetracking used for debounce
+int debounceTime = 150;                                    //Unit: ms
 bool animatingDisplay = false;
 bool staticDisplay = false;
+float rounds = 0;  //The displayed variable
 
-const int pinAdd1 = A0;
-const int pinAdd05 = A1;
-const int pinSub1 = A2;
-const int pinSub05 = A3;
-const int airRelay = 6;
-unsigned long lastMillis[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-int debounceTime = 150;
+//---------Ultrasound variables---------
+unsigned long triggerTime = 0;
+unsigned long echoStartTime = 0;
+unsigned long echoEndTime = 0;
+unsigned long duration = 0;
+unsigned long lastMeasureTime = 0;
+float distance = 0.0;
+bool triggered = false;
+bool waitingForEcho = false;
 
-
-//Serial comm stuff:
-bool stringComplete = false;
-String inputString = "";
-uint16_t dataIn[12];
-uint16_t dataOut[12];
-uint16_t lastDataOut[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-
-
+//-------Serial comm stuff--------
+String inputString = "";                                            //Raw String input.
+bool stringComplete = false;                                        //Used to only parse the String if it is complete.
+uint16_t dataIn[12];                                                //Some values are reset to 0 after they are used.
+uint16_t dataOut[12];                                               //All values are reset to 0 after they are sent.
+uint16_t lastDataOut[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };  //Currently (31/05/25) used as a 0 to compare against.
 
 
 void setup() {
   Serial.begin(9600);
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
   pinMode(pinAdd1, INPUT_PULLUP);
   pinMode(pinAdd05, INPUT_PULLUP);
   pinMode(pinSub1, INPUT_PULLUP);
@@ -68,8 +81,14 @@ void loop() {
       dataOut[2] = 1;
     }
     lastMillis[2] = millis();
-  } else if (digitalRead(pinSub05) == LOW) {
+  } /*else if (digitalRead(pinSub05) == LOW) {
     if (lastMillis[3] + debounceTime < millis()) {
+      //dataOut[3] = 1;
+    }
+    lastMillis[3] = millis();
+  }*/
+  if (distance < 61 || distance > 70) {
+    if (lastMillis[3] + 300 < millis()) {
       dataOut[3] = 1;
     }
     lastMillis[3] = millis();
@@ -126,6 +145,44 @@ void loop() {
     display.print(rounds / 10);
   }
   */
+  //------------Ultrasound------------
+  unsigned long currentTime = micros();
+
+  // Every 50ms, start a new measurement
+  if (!triggered && currentTime - lastMeasureTime >= 30000) {
+    digitalWrite(trigPin, LOW);
+    delayMicroseconds(2);  // minimal blocking (2 us)
+    digitalWrite(trigPin, HIGH);
+    delayMicroseconds(10);  // 10 us trigger pulse
+    digitalWrite(trigPin, LOW);
+    triggerTime = micros();
+    triggered = true;
+    waitingForEcho = true;
+  }
+
+  // Wait for echo to go HIGH
+  if (triggered && waitingForEcho && digitalRead(echoPin) == HIGH) {
+    echoStartTime = micros();
+    waitingForEcho = false;
+  }
+
+  // Wait for echo to go LOW
+  if (triggered && !waitingForEcho && digitalRead(echoPin) == LOW) {
+    echoEndTime = micros();
+    duration = echoEndTime - echoStartTime;
+    distance = duration * 0.0343 / 2.0;  // Convert to cm
+    triggered = false;
+    lastMeasureTime = currentTime;
+
+    
+    Serial.print("Distance: ");
+    Serial.print(distance);
+    Serial.println(" cm");
+    
+  }
+
+
+
   sendData();
   dataIn[0] = 0;
   dataIn[1] = 0;

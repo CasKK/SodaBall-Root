@@ -1,0 +1,17 @@
+
+
+2  = CS_PIN
+3  = airButton
+4  = relay 4
+5  = relay 2 
+6  = relay 3 smoke
+7  = relay 1 air
+8  = add big coin
+9  = add small coin
+11 = DIN
+13 = CLK 
+
+A5 = lightSensor
+
+
+
