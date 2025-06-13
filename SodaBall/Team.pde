@@ -190,7 +190,7 @@ class Team {
 
     if (dataIn[2] == 1) {
       if (!airOn && rounds >= airThesholdValue) {
-        rounds -= bigCoinAirValue;
+        rounds -= airThesholdValue;
         dataOut[5] = 1;
         airOnFunction();
         smokeTeamId = id;

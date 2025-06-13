@@ -19,7 +19,7 @@ boolean hasSentSmokeSignal = false;
 int smokeTeamId = 0;
 double airStartMillis;
 double smokeStartMillis;
-double oneAirTime = 10000; //ms
+double oneAirTime = 15000; //ms
 
 ControlP5 cp5;
 Team teamA, teamB;
