@@ -5,7 +5,7 @@ import processing.sound.*;
 import java.awt.Toolkit;
 
 
-SoundFile file, BEEP;
+SoundFile file, soundTeamA, soundTeamB;
 float volume = 0;
 boolean fadingIn = true;
 boolean playSoundVariable = false;
@@ -32,8 +32,10 @@ void setup() {
 
   teamA = new Team(this, cp5, 0);
   teamB = new Team(this, cp5, 1);
-  BEEP = new SoundFile(this, "BEEP.mp3");
-  BEEP.amp(0.5);
+  soundTeamA = new SoundFile(this, "goalSoundTeamA.mp3");
+  soundTeamB = new SoundFile(this, "goalSoundTeamB.mp3");
+  soundTeamA.amp(1);
+  soundTeamB.amp(1);
 
 
 
@@ -186,14 +188,14 @@ void soundShitter() {
   }
 }
 
-void fadeSound() {
-  volume -= 0.01;
-  file.amp(volume);
-  if (volume <= 0) {
-    playSoundVariable = false;
-    file.stop();
-  }
-}
+//void fadeSound() {
+//  volume -= 0.01;
+//  file.amp(volume);
+//  if (volume <= 0) {
+//    playSoundVariable = false;
+//    file.stop();
+//  }
+//}
 
 
 void keyPressed() {         //keyPressed is a built-in function that is called once every time a key is pressed.

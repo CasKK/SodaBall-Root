@@ -22,8 +22,9 @@ class Team {
   int id;
   int rounds = 0;
   boolean goalMode = false;
+  boolean soundStarted = false;
   double goalModeStartTime;
-  int goalTime = 1000; //Unit: ms
+  int goalTime = 15000; //Unit: ms
 
   Team(PApplet p, ControlP5 cp, int id_) {
     parent = p;
@@ -189,13 +190,20 @@ class Team {
         airOnFunction();
         smokeTeamId = id;
         smokeOnFunction(id);
-        
+
         shouldSend = true;
       }
       dataIn[2] = 0;
     }
 
     if (dataIn[3] == 1) {
+      //if (goalMode) goalMode = false;
+      if (!goalMode) {
+        soundTeamA.stop();
+        soundTeamB.stop();
+        teamB.goalMode = false;
+        teamA.goalMode = false;
+      }
       goalFunction();
       dataIn[3] = 0;
       // Future logic can go here
@@ -211,15 +219,22 @@ class Team {
     if (!goalMode) {
       goalMode = true;
       goalModeStartTime = millis();
+      soundStarted = false;
     }
     if (goalMode) {
+      if (!soundStarted) {
+        soundStarted = true;
+        reduceOtherVolumes();
+        if (id == 0)soundTeamA.play();
+        if (id == 1)soundTeamB.play();
+      }
       fill(255, 0, 0);
-      rect(100, 100, 100, 100);
-      //Toolkit.getDefaultToolkit().beep();
-      BEEP.play();
+      rect(100 + 800 * id, 100, 100, 100);
     }
     if (millis() >= goalModeStartTime + goalTime) {
-      BEEP.stop();
+      soundTeamA.stop();
+      soundTeamB.stop();
+      restoreOtherVolumes();
       goalMode = false;
     }
   }
@@ -278,7 +293,7 @@ class Team {
       .setPosition(x, y)
       .onClick(e -> add1ButtonFunction());
     sub1Button = cp5.addButton("sub1ButtonFunction" + id)
-      .setLabel("-1")
+      .setLabel("air")
       .setSize(60, 30)
       .setPosition(x + 70, y)
       .onClick(e -> sub1ButtonFunction());
@@ -292,7 +307,6 @@ class Team {
       .setSize(60, 30)
       .setPosition(x + 70, y + 40)
       .onClick(e -> goalButtonFunction());
-    
   }
   void add1ButtonFunction() {
     dataIn[0] = 1;
@@ -309,4 +323,25 @@ class Team {
   void goalButtonFunction() {
     dataIn[3] = 1;
   }
+  
+  void reduceOtherVolumes() {
+  try {
+    //Runtime.getRuntime().exec("C:\\Program Files\\NirSoft\\nircmd.exe setappvolume spotify.exe 0.2");
+    Runtime.getRuntime().exec("C:\\Program Files\\NirSoft\\nircmd.exe setappvolume chrome.exe 0.2");
+    // Add more apps as needed
+  } catch (IOException e) {
+    e.printStackTrace();
+  }
+}
+
+void restoreOtherVolumes() {
+  try {
+    //Runtime.getRuntime().exec("C:\\Program Files\\NirSoft\\nircmd.exe setappvolume spotify.exe 1.0");
+    Runtime.getRuntime().exec("C:\\Program Files\\NirSoft\\nircmd.exe setappvolume chrome.exe 1.0");
+  } catch (IOException e) {
+    e.printStackTrace();
+  }
+}
+
+  
 }
