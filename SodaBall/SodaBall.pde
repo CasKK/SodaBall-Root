@@ -29,13 +29,13 @@ void setup() {
   size(1625, 900);
 
   cp5 = new ControlP5(this);
-
-  teamA = new Team(this, cp5, 0);
-  teamB = new Team(this, cp5, 1);
   soundTeamA = new SoundFile(this, "goalSoundTeamA.mp3");
   soundTeamB = new SoundFile(this, "goalSoundTeamB.mp3");
   soundTeamA.amp(1);
   soundTeamB.amp(1);
+  teamA = new Team(this, cp5, soundTeamA, 0);
+  teamB = new Team(this, cp5, soundTeamB, 1);
+
 
 
 

@@ -24,14 +24,17 @@ class Team {
   boolean goalMode = false;
   boolean soundStarted = false;
   double goalModeStartTime;
-  int goalTime = 15000; //Unit: ms
+  int goalTime;
+  SoundFile sound;
 
-  Team(PApplet p, ControlP5 cp, int id_) {
+  Team(PApplet p, ControlP5 cp, SoundFile sound_, int id_) {
     parent = p;
     cp5 = cp;
     id = id_;
     makeUI(20 + 800 * id, 40);
     editUI(420 + 800 * id, 40);
+    sound = sound_;
+    goalTime = (int)(sound.duration() * 1000);
   }
 
   void makeUI(int x, int y) {
@@ -62,6 +65,7 @@ class Team {
       baudratelistFunction((int) val);
     }
     );
+    //baudlist.setVisible(false);
 
     baudlist.addItem("9600", 9600);
     baudlist.addItem("19200", 19200);
@@ -104,7 +108,8 @@ class Team {
       baudratelistFunction1((int) val);
     }
     );
-
+    //baudlist1.setVisible(false);
+    
     baudlist1.addItem("9600", 9600);
     baudlist1.addItem("19200", 19200);
     baudlist1.addItem("38400", 38400);
@@ -199,8 +204,8 @@ class Team {
     if (dataIn[3] == 1) {
       //if (goalMode) goalMode = false;
       if (!goalMode) {
-        soundTeamA.stop();
-        soundTeamB.stop();
+        teamA.sound.stop();
+        teamB.sound.stop();
         teamB.goalMode = false;
         teamA.goalMode = false;
       }
@@ -225,15 +230,13 @@ class Team {
       if (!soundStarted) {
         soundStarted = true;
         reduceOtherVolumes();
-        if (id == 0)soundTeamA.play();
-        if (id == 1)soundTeamB.play();
+        sound.play();
       }
       fill(255, 0, 0);
       rect(100 + 800 * id, 100, 100, 100);
     }
     if (millis() >= goalModeStartTime + goalTime) {
       soundTeamA.stop();
-      soundTeamB.stop();
       restoreOtherVolumes();
       goalMode = false;
     }
@@ -275,10 +278,10 @@ class Team {
   }
   void connectButtonFunction1() {
     if (!connectButtonStatus1) {
-      serial1 = new Serial(parent, selectedport1, selectedbaudrate1);
+      serial1 = new Serial(parent, selectedport1, selectedbaudrate);
       connectionButton1.setLabel("Disconnect");
       connectButtonStatus1 = true;
-      println("Connected", selectedport1, "at", selectedbaudrate1);
+      println("Connected", selectedport1, "at", selectedbaudrate);
     } else {
       serial1.stop();
       connectionButton1.setLabel("Connect");
@@ -323,25 +326,25 @@ class Team {
   void goalButtonFunction() {
     dataIn[3] = 1;
   }
-  
+
   void reduceOtherVolumes() {
-  try {
-    //Runtime.getRuntime().exec("C:\\Program Files\\NirSoft\\nircmd.exe setappvolume spotify.exe 0.2");
-    Runtime.getRuntime().exec("C:\\Program Files\\NirSoft\\nircmd.exe setappvolume chrome.exe 0.2");
-    // Add more apps as needed
-  } catch (IOException e) {
-    e.printStackTrace();
+    try {
+      //Runtime.getRuntime().exec("C:\\Program Files\\NirSoft\\nircmd.exe setappvolume spotify.exe 0.2");
+      Runtime.getRuntime().exec("C:\\Program Files\\NirSoft\\nircmd.exe setappvolume chrome.exe 0.2");
+      // Add more apps as needed
+    }
+    catch (IOException e) {
+      e.printStackTrace();
+    }
   }
-}
 
-void restoreOtherVolumes() {
-  try {
-    //Runtime.getRuntime().exec("C:\\Program Files\\NirSoft\\nircmd.exe setappvolume spotify.exe 1.0");
-    Runtime.getRuntime().exec("C:\\Program Files\\NirSoft\\nircmd.exe setappvolume chrome.exe 1.0");
-  } catch (IOException e) {
-    e.printStackTrace();
+  void restoreOtherVolumes() {
+    try {
+      //Runtime.getRuntime().exec("C:\\Program Files\\NirSoft\\nircmd.exe setappvolume spotify.exe 1.0");
+      Runtime.getRuntime().exec("C:\\Program Files\\NirSoft\\nircmd.exe setappvolume chrome.exe 1.0");
+    }
+    catch (IOException e) {
+      e.printStackTrace();
+    }
   }
-}
-
-  
 }
