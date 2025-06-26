@@ -21,6 +21,8 @@ class Team {
   double lastConnection1Time = 0;
   int connection2Time = 0;
   double lastConnection2Time = 0;
+  boolean triggerAllowed = false;
+  double firstConnectedTime = 0;
 
   Team(PApplet p, ControlP5 cp, SoundFile sound_, int id_) {
     parent = p;
@@ -29,8 +31,8 @@ class Team {
     editUI(420 + 800 * id, 40);
     sound = sound_;
     goalTime = (int)(sound.duration() * 1000);
-    connection1 = new Connection(parent, cp5, id*10, 40 + 800 * id, 40);
-    connection2 = new Connection(parent, cp5, id*10+1, 40 + 800 * id, 450);
+    connection1 = new Connection(parent, cp5, id*10, 40 + 800 * id, 40, this);
+    connection2 = new Connection(parent, cp5, id*10+1, 40 + 800 * id, 450, this);
   }
 
   public void sendData() {
@@ -55,7 +57,12 @@ class Team {
 
   public void updateValues() {
     boolean shouldSend = false;
-
+    
+    if (!triggerAllowed) {
+      if (millis() - firstConnectedTime > 5000) triggerAllowed = true;
+      return;
+    }
+    
     if (dataIn[0] == 1) {
       rounds += bigCoinAirValue;
       shouldSend = true;
@@ -91,17 +98,17 @@ class Team {
       goalFunction();
       dataIn[3] = 0;
     }
-    if (dataIn[11] > 0) {
-      connection1Time = dataIn[11];
+    if (dataIn[4] > 0) {
+      connection1Time = dataIn[4];
       lastConnection1Time = millis();
     }
 
-    if (shouldSend || dataOut[4] != rounds) {
-      dataOut[4] = rounds;
+    if (shouldSend || dataOut[0] != rounds) {
+      dataOut[0] = rounds;
       sendData();
     }
   }
-  
+
   public void updateValues2() {
     if (dataIn2[11] > 0) {
       connection2Time = dataIn2[11];

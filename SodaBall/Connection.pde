@@ -2,6 +2,7 @@ class Connection {
 
   PApplet parent;
   ControlP5 cp5;
+  Team parentTeam;
   Serial serial;
   Textarea receivedArea;
   Println arduinoConsole;
@@ -16,11 +17,12 @@ class Connection {
   String[] messageArrayIn = {};
 
 
-  Connection(PApplet p, ControlP5 cp, int id_, int x, int y) {
+  Connection(PApplet p, ControlP5 cp, int id_, int x, int y, Team t) {
     parent = p;
     cp5 = cp;
     id = id_;
     makeUI(x, y);
+    parentTeam = t;
   }
 
 
@@ -133,6 +135,8 @@ class Connection {
       connectionButton.setLabel("Disconnect");
       connectButtonStatus = true;
       println("Connected", selectedport, "at", selectedbaudrate);
+      parentTeam.firstConnectedTime = millis();
+      parentTeam.triggerAllowed = false;
     } else {
       serial.stop();
       connectionButton.setLabel("Connect");

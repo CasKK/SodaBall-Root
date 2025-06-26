@@ -9,7 +9,7 @@ const int CS_PIN = 2;                      //For display
 const int lightSensorPin = A5;             //Light sensor lignal pin
 const int pinAdd1 = 8;                     //For add big coin
 const int pinAdd05 = 9;                    //For add small coin
-const int pinSub1 = 3;                     //For start airRelay
+const int activateAirButton = 3;           //For start airRelay
 const int pinSub05 = A3;                   //For nothing currently
 const int airRelay = 4;                    //7;                    //For airRelay
 const int smokeRelay = 5;                  //6;                  //For airRelay
@@ -23,7 +23,8 @@ unsigned long lastMillis[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };  //Timetracking used f
 int debounceTime = 250;                                    //Unit: ms
 bool animatingDisplay = false;
 bool staticDisplay = false;
-float rounds = 0;  //The displayed variable
+float rounds = 0;              //The displayed variable
+int connectionGoodTime = 200;  //Time between connection checks
 
 //Beam break
 int lightValue = 0.0;
@@ -42,7 +43,7 @@ void setup() {
 
   pinMode(pinAdd1, INPUT_PULLUP);
   pinMode(pinAdd05, INPUT_PULLUP);
-  pinMode(pinSub1, INPUT_PULLUP);
+  pinMode(activateAirButton, INPUT_PULLUP);
   pinMode(pinSub05, INPUT_PULLUP);
   pinMode(airRelay, OUTPUT);
   pinMode(smokeRelay, OUTPUT);
@@ -65,6 +66,8 @@ void loop() {
       //Serial.println("20");
     }
     lastMillis[0] = millis();
+  } else {
+    dataOut[0] = 0;
   }
   if (digitalRead(pinAdd05) == LOW) {
     if (lastMillis[1] + debounceTime < millis()) {
@@ -72,14 +75,17 @@ void loop() {
       //Serial.println("10");
     }
     lastMillis[1] = millis();
+  } else {
+    dataOut[1] = 0;
   }
-  if (digitalRead(pinSub1) == LOW) {
+
+  if (digitalRead(activateAirButton) == LOW) {
     if (lastMillis[2] + debounceTime < millis()) {
       dataOut[2] = 1;
-
-      //Serial.println("air");
     }
     lastMillis[2] = millis();
+  } else {
+    dataOut[2] = 0;
   } /*else if (digitalRead(pinSub05) == LOW) {
     if (lastMillis[3] + debounceTime < millis()) {
       //dataOut[3] = 1;
@@ -87,12 +93,12 @@ void loop() {
     lastMillis[3] = millis();
   }*/
 
-  if (millis() >= lastMillis[7] + 200) {
+  /*
+  if (millis() >= lastMillis[7] + connectionGoodTime) {
     lastMillis[7] = millis();
-    dataOut[11] = 200;
-  } else {
-    dataOut[11] = 0;
+    dataOut[4] = connectionGoodTime;
   }
+*/
 
   lightValue = analogRead(lightSensorPin);
   if (lightValue > 200) {
@@ -100,31 +106,31 @@ void loop() {
       dataOut[3] = 1;
     }
     lastMillis[3] = millis();
+  } else {
+    dataOut[3] = 0;
   }
 
 
   if (dataIn[5] == 1) {
     digitalWrite(airRelay, HIGH);
     //Serial.println("air");
+    dataOut[5] = 1;
   } else {
     digitalWrite(airRelay, LOW);
+    dataOut[5] = 0;
   }
 
   if (dataIn[6] == 1) {
     digitalWrite(smokeRelay, HIGH);
+    dataOut[6] = 1;
   } else {
     digitalWrite(smokeRelay, LOW);
+    dataOut[6] = 0;
   }
 
   updateDisplay(rounds);
 
-
-
   sendData();
-  dataIn[0] = 0;
-  dataIn[1] = 0;
-  dataIn[2] = 0;
-  dataIn[3] = 0;
 }
 
 void parseInputFromSerial() {
@@ -145,12 +151,12 @@ void parseInputFromSerial() {
       }
     }
     //if (idx == 12) {
-      //Serial.println("Modtaget");
+    //Serial.println("Modtaget");
     //} else {
-      //Serial.println("ERROR: Expected 12 values, got " + String(idx));
+    //Serial.println("ERROR: Expected 12 values, got " + String(idx));
     //}
     inputString = "";
-    rounds = float(dataIn[4]) / 10;
+    rounds = float(dataIn[0]) / 10;
     animatingDisplay = false;
   }
 }
@@ -165,16 +171,18 @@ void serialEvent() {
 }
 
 void sendData() {
-  if (memcmp(dataOut, lastDataOut, sizeof(dataOut)) != 0) {
+  if (memcmp(dataOut, lastDataOut, sizeof(dataOut)) != 0 || millis() >= lastMillis[7] + connectionGoodTime) {
+    dataOut[4] = connectionGoodTime;
+    lastMillis[7] = millis();
     String send_this = "";
     for (int i = 0; i < 12; i++) {
       send_this += String(dataOut[i]);
       if (i < 11) send_this += ",";
     }
     Serial.println(send_this);
-    for (int i = 0; i < 12; i++) {
-      dataOut[i] = 0;
-      //lastDataOut[i] = 0;
+    for (int i = 0; i < 10; i++) {
+      //dataOut[i] = 0;
+      lastDataOut[i] = dataOut[i];
     }
     //Serial.println("0,0,0,0,0,0,0,0,0,0,0,0");
   }
