@@ -23,7 +23,7 @@ double oneAirTime = 15000; //ms
 
 ControlP5 cp5;
 Team teamA, teamB;
-Button soundShitterButton, sub05Button, add05Button, sub1Button, add1Button;
+Button soundShitterButton;//, sub05Button, add05Button, sub1Button, add1Button;
 
 void setup() {
   size(1625, 900);
