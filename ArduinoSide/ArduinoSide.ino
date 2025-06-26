@@ -11,8 +11,8 @@ const int pinAdd1 = 8;                     //For add big coin
 const int pinAdd05 = 9;                    //For add small coin
 const int pinSub1 = 3;                     //For start airRelay
 const int pinSub05 = A3;                   //For nothing currently
-const int airRelay = 4;//7;                    //For airRelay
-const int smokeRelay = 5;//6;                  //For airRelay
+const int airRelay = 4;                    //7;                    //For airRelay
+const int smokeRelay = 5;                  //6;                  //For airRelay
 
 //--------Objects----------
 MD_Parola display = MD_Parola(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);  //Display
@@ -65,14 +65,14 @@ void loop() {
       //Serial.println("20");
     }
     lastMillis[0] = millis();
-  } 
+  }
   if (digitalRead(pinAdd05) == LOW) {
     if (lastMillis[1] + debounceTime < millis()) {
       dataOut[1] = 1;
       //Serial.println("10");
     }
     lastMillis[1] = millis();
-  } 
+  }
   if (digitalRead(pinSub1) == LOW) {
     if (lastMillis[2] + debounceTime < millis()) {
       dataOut[2] = 1;
@@ -86,6 +86,13 @@ void loop() {
     }
     lastMillis[3] = millis();
   }*/
+
+  if (millis() >= lastMillis[7] + 200) {
+    lastMillis[7] = millis();
+    dataOut[11] = 200;
+  } else {
+    dataOut[11] = 0;
+  }
 
   lightValue = analogRead(lightSensorPin);
   if (lightValue > 200) {
@@ -137,11 +144,11 @@ void parseInputFromSerial() {
         start = i + 1;
       }
     }
-    if (idx == 12) {
+    //if (idx == 12) {
       //Serial.println("Modtaget");
-    } else {
+    //} else {
       //Serial.println("ERROR: Expected 12 values, got " + String(idx));
-    }
+    //}
     inputString = "";
     rounds = float(dataIn[4]) / 10;
     animatingDisplay = false;

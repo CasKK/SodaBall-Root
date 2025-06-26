@@ -12,6 +12,8 @@ class Connection {
   String selectedport;
   int selectedbaudrate;
   int id;
+  String[] messageArrayOut = {};
+  String[] messageArrayIn = {};
 
 
   Connection(PApplet p, ControlP5 cp, int id_, int x, int y) {
@@ -20,6 +22,53 @@ class Connection {
     id = id_;
     makeUI(x, y);
   }
+
+
+  public void sendData(String message) {
+    try {
+      serial.write(message);
+      serial.write(10);
+      messageArrayOut = append(messageArrayOut, message);
+    }
+    catch (Exception e) {
+      println("Serial port error: " + e.getMessage());
+    }
+  }
+
+
+  public int[] readData() {
+    final int[] defaultData = new int[12]; // all zeros by default
+
+    if (serial == null || serial.available() <= 0) {
+      return defaultData;
+    }
+
+    try {
+      String data = serial.readStringUntil('\n');
+      if (data != null) {
+        data = data.trim(); // Clean up trailing newline or whitespace
+        receivedArea.setText("Arduino: " + data);
+        messageArrayIn = append(messageArrayIn, data);
+
+        String[] tokens = split(data, ",");
+        if (tokens.length != 12) return defaultData;
+
+        int[] parsed = new int[tokens.length];
+
+        for (int i = 0; i < tokens.length; i++) {
+          parsed[i] = int(trim(tokens[i])); // Trim in case of trailing spaces
+        }
+        return parsed;
+      }
+    }
+    catch (Exception e) {
+      println("Serial port error: " + e.getMessage());
+    }
+
+    return defaultData;
+  }
+
+
 
   void makeUI(int x, int y) {
     connectionButton = cp5.addButton("connectButtonFunction" + id)
@@ -49,7 +98,7 @@ class Connection {
       baudratelistFunction((int) val);
     }
     );
-    
+
     baudlist.addItem("9600", 9600);
     baudlist.addItem("19200", 19200);
     baudlist.addItem("38400", 38400);
@@ -67,7 +116,7 @@ class Connection {
       portlist.addItem(availableports[i], availableports[i]);
     }
   }
-  
+
   void baudratelistFunction(int index) {
     String baudstring;
     baudstring = baudlist.getItem(index).get("name").toString();

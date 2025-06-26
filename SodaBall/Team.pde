@@ -6,7 +6,7 @@ class Team {
   Button goalButton, add05Button, sub1Button, add1Button, cancel1Button;
   int[] dataOut = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   int[] dataIn = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-  int[] lastDataIn = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+  int[] dataIn2 = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   String[] messageArrayOut = {};
   String[] messageArrayIn = {};
   int id;
@@ -16,6 +16,11 @@ class Team {
   double goalModeStartTime;
   int goalTime;
   SoundFile sound;
+
+  int connection1Time = 0;
+  double lastConnection1Time = 0;
+  int connection2Time = 0;
+  double lastConnection2Time = 0;
 
   Team(PApplet p, ControlP5 cp, SoundFile sound_, int id_) {
     parent = p;
@@ -29,47 +34,23 @@ class Team {
   }
 
   public void sendData() {
-    try {
-      String message = "" ;
-      for (int i = 0; i < 12; i++) {
-        String messageValue = Integer.toString(dataOut[i]);
-        message = message+messageValue;
-        if (i<11) message = message + ",";
-      }
-      connection1.serial.write(message);
-      connection1.serial.write(10);
-      connection2.serial.write(message);
-      connection2.serial.write(10);
-      messageArrayOut = append(messageArrayOut, message);
+    String message = "" ;
+    for (int i = 0; i < 12; i++) {
+      String messageValue = Integer.toString(dataOut[i]);
+      message = message+messageValue;
+      if (i<11) message = message + ",";
     }
-    catch (Exception e) {
-      println("Serial port error: " + e.getMessage());
-    }
+    connection1.sendData(message);
+    connection2.sendData(message);
+    //messageArrayOut = append(messageArrayOut, message);
   }
 
 
   public void readData() {
-    String data = "";
-    if (connection1.serial != null) {
-      try {
-        if (connection1.serial.available() > 0) {
-          data = connection1.serial.readStringUntil(10);
-          if (data != null) {
-            connection1.receivedArea.setText("Arduino: " + data);
-            messageArrayIn = append(messageArrayIn, data);
-
-            String[] dataInTemp = split(data, ",");
-            dataIn = new int[dataInTemp.length];
-            for (int i = 0; i < dataInTemp.length; i++) {
-              dataIn[i] = int(dataInTemp[i]);
-            }
-          }
-        }
-      }
-      catch (Exception e) {
-        println("Serial port error: " + e.getMessage());
-      }
-    }
+    dataIn = connection1.readData();
+    dataIn2 = connection2.readData();
+    updateValues();
+    updateValues2();
   }
 
   public void updateValues() {
@@ -110,10 +91,21 @@ class Team {
       goalFunction();
       dataIn[3] = 0;
     }
+    if (dataIn[11] > 0) {
+      connection1Time = dataIn[11];
+      lastConnection1Time = millis();
+    }
 
-    if (shouldSend) {
+    if (shouldSend || dataOut[4] != rounds) {
       dataOut[4] = rounds;
       sendData();
+    }
+  }
+  
+  public void updateValues2() {
+    if (dataIn2[11] > 0) {
+      connection2Time = dataIn2[11];
+      lastConnection2Time = millis();
     }
   }
 
@@ -169,18 +161,22 @@ class Team {
   }
   void add1ButtonFunction() {
     dataIn[0] = 1;
+    updateValues();
   }
 
   void sub1ButtonFunction() {
     dataIn[2] = 1;
+    updateValues();
   }
 
   void add05ButtonFunction() {
     dataIn[1] = 1;
+    updateValues();
   }
 
   void goalButtonFunction() {
     dataIn[3] = 1;
+    updateValues();
   }
   void cancel1ButtonFunction() {
     if (rounds >= 5) {
@@ -188,8 +184,7 @@ class Team {
     } else {
       rounds = 0;
     }
-    dataOut[4] = rounds;
-    sendData();
+    updateValues();
   }
 
   void reduceOtherVolumes() {

@@ -23,7 +23,6 @@ double oneAirTime = 15000; //ms
 
 ControlP5 cp5;
 Team teamA, teamB;
-Button soundShitterButton;//, sub05Button, add05Button, sub1Button, add1Button;
 
 void setup() {
   size(1625, 900);
@@ -53,14 +52,27 @@ void draw() {
 
   teamB.readData();
 
-  teamA.updateValues();
-
-  teamB.updateValues();
-
   if (airOn) airOnFunction();
   if (smokeOn) smokeOnFunction(smokeTeamId);
   if (teamA.goalMode) teamA.goalFunction();
   if (teamB.goalMode) teamB.goalFunction();
+
+  if (teamA.connection1Time + teamA.lastConnection1Time > millis()) {
+    fill(0, 255, 0);
+    rect(40, 100, 10, 10);
+  }
+  if (teamB.connection1Time + teamB.lastConnection1Time > millis()) {
+    fill(0, 255, 0);
+    rect(40 + 800, 100, 10, 10);
+  }
+  if (teamA.connection2Time + teamA.lastConnection2Time > millis()) {
+    fill(0, 255, 0);
+    rect(40, 100 + 450, 10, 10);
+  }
+  if (teamB.connection2Time + teamB.lastConnection2Time > millis()) {
+    fill(0, 255, 0);
+    rect(40 + 800, 100 + 450, 10, 10);
+  }
 }
 
 void airOnFunction() {
@@ -97,36 +109,15 @@ void smokeOnFunction (int id) {
   }
 }
 
-void soundShitter() {
-  playSoundVariable = !playSoundVariable;
-  if (playSoundVariable) {
-    volume = 1;
-    file = new SoundFile(this, "lyd1.mp3");
-    file.amp(volume);
-    file.play();
-  } else {
-    file.stop();
-  }
-}
-
-//void fadeSound() {
-//  volume -= 0.01;
-//  file.amp(volume);
-//  if (volume <= 0) {
-//    playSoundVariable = false;
-//    file.stop();
-//  }
-//}
-
 
 void keyPressed() {         //keyPressed is a built-in function that is called once every time a key is pressed.
   if (keyCode==65) {        //To check what key is pressed.
     //keyVariableA = !keyVariableA;    //This variable is (at the time of writing this) being used for drawing something. It is therefore made like a flip-flop, to draw it every frame and not just once.
   }
   if (keyCode==66) {
-    saveStrings("dataOut1", teamA.messageArrayOut);
-    saveStrings("dataIn1", teamA.messageArrayIn);
-    saveStrings("dataOut2", teamB.messageArrayOut);
-    saveStrings("dataIn2", teamB.messageArrayIn);
+    saveStrings("dataOut1", teamA.connection1.messageArrayOut);
+    saveStrings("dataIn1", teamA.connection1.messageArrayIn);
+    saveStrings("dataOut2", teamA.connection2.messageArrayOut);
+    saveStrings("dataIn2", teamA.connection2.messageArrayIn);
   }
 }
