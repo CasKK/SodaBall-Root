@@ -47,8 +47,9 @@ void setup() {
 void draw() {
 
   background(200);
-
-
+  //fill(0);
+  //textSize(30);
+  //text(nf(teamA.rounds, 0, 0), 400, 500);
 
   teamA.readData();
 

@@ -42,7 +42,7 @@ class Connection {
     final int[] defaultData = new int[12]; // all zeros by default
 
     if (serial == null || serial.available() <= 0) {
-      return defaultData;
+      return null;
     }
 
     try {
@@ -50,10 +50,10 @@ class Connection {
       if (data != null) {
         data = data.trim(); // Clean up trailing newline or whitespace
         receivedArea.setText("Arduino: " + data);
-        messageArrayIn = append(messageArrayIn, data);
+        messageArrayIn = append(messageArrayIn, data + nf(millis()));
 
         String[] tokens = split(data, ",");
-        if (tokens.length != 12) return defaultData;
+        if (tokens.length != 12) return null;
 
         int[] parsed = new int[tokens.length];
 
@@ -67,7 +67,7 @@ class Connection {
       println("Serial port error: " + e.getMessage());
     }
 
-    return defaultData;
+    return null;
   }
 
 

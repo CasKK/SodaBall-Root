@@ -49,20 +49,28 @@ class Team {
 
 
   public void readData() {
-    dataIn = connection1.readData();
-    dataIn2 = connection2.readData();
+  int[] result1 = connection1.readData();
+  if (result1 != null) {
+    dataIn = result1;
+  }
+
+  int[] result2 = connection2.readData();
+  if (result2 != null) {
+    dataIn2 = result2;
+  }
+
     updateValues();
     updateValues2();
   }
 
   public void updateValues() {
     boolean shouldSend = false;
-    
-    if (!triggerAllowed) {
+
+    if (!triggerAllowed || connection1.connectButtonStatus == false) {
       if (millis() - firstConnectedTime > 5000) triggerAllowed = true;
       return;
     }
-    
+
     if (dataIn[0] == 1) {
       rounds += bigCoinAirValue;
       shouldSend = true;
@@ -102,9 +110,20 @@ class Team {
       connection1Time = dataIn[4];
       lastConnection1Time = millis();
     }
+    if (dataIn[7] != rounds) {
+      shouldSend = true;
+    }
+    
+    //if (dataIn[7] == rounds) {
+      parent.fill(0);
+      parent.textSize(30);
+      parent.text(nf(dataIn[7], 0, 0), 400 + 800 * id, 500);
+    //}
 
     if (shouldSend || dataOut[0] != rounds) {
       dataOut[0] = rounds;
+      dataOut[8] = millis();
+      dataOut[9] = dataIn[9];
       sendData();
     }
   }
@@ -186,8 +205,8 @@ class Team {
     updateValues();
   }
   void cancel1ButtonFunction() {
-    if (rounds >= 5) {
-      rounds = rounds - 5;
+    if (rounds >= airThesholdValue) {
+      rounds = rounds - airThesholdValue;
     } else {
       rounds = 0;
     }

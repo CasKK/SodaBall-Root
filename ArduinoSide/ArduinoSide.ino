@@ -163,8 +163,13 @@ void serialEvent() {
 }
 
 void sendData() {
+  dataOut[8] = dataIn[8];
+
   if (memcmp(dataOut, lastDataOut, sizeof(dataOut)) != 0 || millis() >= lastMillis[7] + connectionGoodTime) {
+
     dataOut[4] = connectionGoodTime;
+    dataOut[7] = dataIn[0];
+    dataOut[9] = millis();
     lastMillis[7] = millis();
     String send_this = "";
     for (int i = 0; i < 12; i++) {
