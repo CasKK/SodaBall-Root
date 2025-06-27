@@ -19,7 +19,9 @@ boolean hasSentSmokeSignal = false;
 int smokeTeamId = 0;
 double airStartMillis;
 double smokeStartMillis;
-double oneAirTime = 15000; //ms
+double oneAirTime = 5000; //ms
+double smokeStopEarlyTime = 1000;
+double smokeStartLateTime = 1000;
 
 ControlP5 cp5;
 Team teamA, teamB;
@@ -91,7 +93,7 @@ void smokeOnFunction (int id) {
   if (!smokeOn) {
     smokeStartMillis = millis();
     smokeOn = true;
-  } else if (airStartMillis + 1000 <= millis() && airStartMillis + oneAirTime - 5000 > millis()) {
+  } else if (airStartMillis + smokeStartLateTime <= millis() && airStartMillis + oneAirTime - smokeStopEarlyTime > millis()) {
     if (!hasSentSmokeSignal) {
       hasSentSmokeSignal = true;
       if (id == 0)teamA.dataOut[6] = 1;
@@ -99,7 +101,7 @@ void smokeOnFunction (int id) {
       teamA.sendData();
       teamB.sendData();
     }
-  } else if (airStartMillis + oneAirTime - 5000 <= millis()) {
+  } else if (airStartMillis + oneAirTime - smokeStopEarlyTime <= millis()) {
     smokeOn = false;
     hasSentSmokeSignal = false;
     teamA.dataOut[6] = 0;

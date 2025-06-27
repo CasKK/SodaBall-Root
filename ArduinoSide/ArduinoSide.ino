@@ -66,8 +66,6 @@ void loop() {
       //Serial.println("20");
     }
     lastMillis[0] = millis();
-  } else {
-    dataOut[0] = 0;
   }
   if (digitalRead(pinAdd05) == LOW) {
     if (lastMillis[1] + debounceTime < millis()) {
@@ -75,8 +73,6 @@ void loop() {
       //Serial.println("10");
     }
     lastMillis[1] = millis();
-  } else {
-    dataOut[1] = 0;
   }
 
   if (digitalRead(activateAirButton) == LOW) {
@@ -84,8 +80,6 @@ void loop() {
       dataOut[2] = 1;
     }
     lastMillis[2] = millis();
-  } else {
-    dataOut[2] = 0;
   } /*else if (digitalRead(pinSub05) == LOW) {
     if (lastMillis[3] + debounceTime < millis()) {
       //dataOut[3] = 1;
@@ -106,8 +100,6 @@ void loop() {
       dataOut[3] = 1;
     }
     lastMillis[3] = millis();
-  } else {
-    dataOut[3] = 0;
   }
 
 
@@ -184,6 +176,10 @@ void sendData() {
       //dataOut[i] = 0;
       lastDataOut[i] = dataOut[i];
     }
+    dataOut[0] = 0;
+    dataOut[1] = 0;
+    dataOut[2] = 0;
+    dataOut[3] = 0;
     //Serial.println("0,0,0,0,0,0,0,0,0,0,0,0");
   }
 }

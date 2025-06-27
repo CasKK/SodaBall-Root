@@ -110,8 +110,8 @@ class Team {
   }
 
   public void updateValues2() {
-    if (dataIn2[11] > 0) {
-      connection2Time = dataIn2[11];
+    if (dataIn2[4] > 0) {
+      connection2Time = dataIn2[4];
       lastConnection2Time = millis();
     }
   }
