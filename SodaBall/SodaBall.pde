@@ -62,19 +62,19 @@ void draw() {
 
   if (teamA.connection1Time + teamA.lastConnection1Time > millis()) {
     fill(0, 255, 0);
-    rect(40, 100, 10, 10);
+    rect(40, 100, 30, 30);
   }
   if (teamB.connection1Time + teamB.lastConnection1Time > millis()) {
     fill(0, 255, 0);
-    rect(40 + 800, 100, 10, 10);
+    rect(40 + 800, 100, 30, 30);
   }
   if (teamA.connection2Time + teamA.lastConnection2Time > millis()) {
     fill(0, 255, 0);
-    rect(40, 100 + 450, 10, 10);
+    rect(40, 100 + 450, 30, 30);
   }
   if (teamB.connection2Time + teamB.lastConnection2Time > millis()) {
     fill(0, 255, 0);
-    rect(40 + 800, 100 + 450, 10, 10);
+    rect(40 + 800, 100 + 450, 30, 30);
   }
 }
 

@@ -16,6 +16,8 @@ class Connection {
   String[] messageArrayOut = {};
   String[] messageArrayIn = {};
 
+  double firstConnectedTime = 0;
+  boolean triggerAllowed = false;
 
   Connection(PApplet p, ControlP5 cp, int id_, int x, int y, Team t) {
     parent = p;
@@ -135,8 +137,8 @@ class Connection {
       connectionButton.setLabel("Disconnect");
       connectButtonStatus = true;
       println("Connected", selectedport, "at", selectedbaudrate);
-      parentTeam.firstConnectedTime = millis();
-      parentTeam.triggerAllowed = false;
+      firstConnectedTime = millis();
+      triggerAllowed = false;
     } else {
       serial.stop();
       connectionButton.setLabel("Connect");

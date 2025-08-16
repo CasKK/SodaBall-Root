@@ -22,7 +22,9 @@ class Team {
   int connection2Time = 0;
   double lastConnection2Time = 0;
   boolean triggerAllowed = false;
-  double firstConnectedTime = 0;
+  //double firstConnectedTime = 0;
+  double lastErrorCorrectMillis = 0;
+  double lastErrorCorrectMillis2 = 0;
 
   Team(PApplet p, ControlP5 cp, SoundFile sound_, int id_) {
     parent = p;
@@ -49,15 +51,15 @@ class Team {
 
 
   public void readData() {
-  int[] result1 = connection1.readData();
-  if (result1 != null) {
-    dataIn = result1;
-  }
+    int[] result1 = connection1.readData();
+    if (result1 != null) {
+      dataIn = result1;
+    }
 
-  int[] result2 = connection2.readData();
-  if (result2 != null) {
-    dataIn2 = result2;
-  }
+    int[] result2 = connection2.readData();
+    if (result2 != null) {
+      dataIn2 = result2;
+    }
 
     updateValues();
     updateValues2();
@@ -66,8 +68,8 @@ class Team {
   public void updateValues() {
     boolean shouldSend = false;
 
-    if (!triggerAllowed || connection1.connectButtonStatus == false) {
-      if (millis() - firstConnectedTime > 5000) triggerAllowed = true;
+    if (!connection1.triggerAllowed || connection1.connectButtonStatus == false) {
+      if (millis() - connection1.firstConnectedTime > 5000) connection1.triggerAllowed = true;
       return;
     }
 
@@ -109,18 +111,23 @@ class Team {
     if (dataIn[4] > 0) {
       connection1Time = dataIn[4];
       lastConnection1Time = millis();
+      dataIn[4] = 0;
     }
-    if (dataIn[7] != rounds) {
-      shouldSend = true;
+    if (millis() > lastErrorCorrectMillis + connection1Time) {
+      if (dataIn[5] != dataOut[5] ||
+        dataIn[6] != dataOut[6] ||
+        dataIn[7] != rounds) {
+        shouldSend = true;
+        lastErrorCorrectMillis = millis();
+      }
     }
-    
     //if (dataIn[7] == rounds) {
-      parent.fill(0);
-      parent.textSize(30);
-      parent.text(nf(dataIn[7], 0, 0), 400 + 800 * id, 500);
+    parent.fill(0);
+    parent.textSize(30);
+    parent.text(nf(dataIn[7], 0, 0), 400 + 800 * id, 500);
     //}
 
-    if (shouldSend || dataOut[0] != rounds) {
+    if (shouldSend) {
       dataOut[0] = rounds;
       dataOut[8] = millis();
       dataOut[9] = dataIn[9];
@@ -129,10 +136,33 @@ class Team {
   }
 
   public void updateValues2() {
+    boolean shouldSend = false;
+
+    if (!connection2.triggerAllowed || connection2.connectButtonStatus == false) {
+      if (millis() - connection2.firstConnectedTime > 5000) connection2.triggerAllowed = true;
+      return;
+    }
     if (dataIn2[4] > 0) {
       connection2Time = dataIn2[4];
       lastConnection2Time = millis();
+      dataIn2[4] = 0;
     }
+    if (millis() > lastErrorCorrectMillis2 + connection2Time) {
+      if (dataIn2[5] != dataOut[5] ||
+        dataIn2[6] != dataOut[6] ||
+        dataIn2[7] != rounds) {
+        shouldSend = true;
+        lastErrorCorrectMillis2 = millis();
+      }
+    }
+    if (shouldSend) {
+      dataOut[0] = rounds;
+      dataOut[8] = millis();
+      dataOut[9] = dataIn[9];
+      sendData();
+    }
+    
+    
   }
 
   void goalFunction() {
