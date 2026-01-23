@@ -92,7 +92,7 @@ void loop() {
     lastMillis[7] = millis();
     dataOut[4] = connectionGoodTime;
   }
-*/
+  */
 
   lightValue = analogRead(lightSensorPin);
   if (lightValue > 200) {
@@ -152,6 +152,7 @@ void parseInputFromSerial() {
     animatingDisplay = false;
   }
 }
+
 void serialEvent() {
   while (Serial.available()) {
     char inChar = (char)Serial.read();
@@ -188,6 +189,9 @@ void sendData() {
     //Serial.println("0,0,0,0,0,0,0,0,0,0,0,0");
   }
 }
+
+
+
 void updateDisplay(float value) {
   static float lastDisplayedValue = -1.0;
   static bool lastWasStatic = false;
