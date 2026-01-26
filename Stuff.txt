@@ -15,3 +15,26 @@ A5 = lightSensor
 
 
 
+
+
+
+2 arduino, med laser, old relay
+2 arduino, uden laser, old relay
+1 arduino, med laser, old relay
+1 arduino, uden laser, new relay
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
