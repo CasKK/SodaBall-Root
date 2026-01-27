@@ -1,4 +1,8 @@
 #include <FastCRC.h>
+#include <MD_Parola.h>   //Display libary
+#include <MD_MAX72xx.h>  //Display libary
+#include <SPI.h>         //Display libary
+#define HARDWARE_TYPE MD_MAX72XX::FC16_HW  //For Display
 
 FastCRC8 CRC8;
 
@@ -18,6 +22,13 @@ const uint8_t coinSmall = 9;          //For add small coin
 const uint8_t activateAirButton = 3;  //For start airRelay
 const uint8_t airRelay = 4;           //7;                    //For airRelay
 const uint8_t smokeRelay = 5;         //6;                  //For smokeRelay
+
+
+const int MAX_DEVICES = 1;                 //For display
+const int CS_PIN = 2;                      //For display
+bool animatingDisplay = false;
+bool staticDisplay = false;
+MD_Parola display = MD_Parola(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);  //Display
 
 /* =========================
    MESSAGE QUEUE
@@ -177,7 +188,8 @@ void handleLine(String line) {
 
     char *endptr;
     long number = strtol(msg, &endptr, 10);
-    //Number will be used later
+    number = float(number) / 10;
+    updateDisplay(number);
 
     if (commandHandled) {
       sendCommandAck(id, rxSeq);
@@ -210,6 +222,13 @@ void setup() {
   pinMode(activateAirButton, INPUT_PULLUP);
   pinMode(airRelay, OUTPUT);
   pinMode(smokeRelay, OUTPUT);
+  display.begin();
+  display.setIntensity(5);
+  display.displayClear();
+  display.displayText("TEST", PA_CENTER, 50, 0, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+  while (!display.displayAnimate()) {
+  }
+  display.displayReset();
 }
 
 /* =========================
@@ -257,5 +276,52 @@ void loop() {
   while (Serial.available()) {
     String line = Serial.readStringUntil('\n');
     handleLine(line);
+  }
+}
+
+
+void updateDisplay(float value) {
+  static float lastDisplayedValue = -1.0;
+  static bool lastWasStatic = false;
+
+  bool isStaticDisplay = (value == floor(value) && value < 10.0);
+
+  // Skip updating only if:
+  // - value is static
+  // - AND previously shown value was the same
+  // - AND it was shown statically
+  // - AND we are not animating
+  if (isStaticDisplay && lastWasStatic && value == lastDisplayedValue && !animatingDisplay) {
+    return;
+  }
+
+  // Handle scroll animation if in progress
+  if (animatingDisplay) {
+    if (display.displayAnimate()) {
+      display.displayClear();
+      display.displayReset();
+      animatingDisplay = false;
+      // Do NOT update lastDisplayedValue here — we want scrolling to repeat
+    }
+    return;
+  }
+
+  display.displayClear();
+
+  if (isStaticDisplay) {
+    display.displayReset();
+    display.print((int)value);
+    staticDisplay = true;
+    animatingDisplay = false;
+    lastDisplayedValue = value;
+    lastWasStatic = true;
+  } else {
+    char msg[8];
+    dtostrf(value, 4, 1, msg);  // Format to 1 decimal place
+    display.displayText(msg, PA_CENTER, 100, 0, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+    animatingDisplay = true;
+    staticDisplay = false;
+    lastWasStatic = false;  // Important! Tells next static value to show even if value is same
+    // Don't update lastDisplayedValue — to keep scrolling
   }
 }
