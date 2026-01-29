@@ -4,13 +4,11 @@ import time
 from collections import deque
 from collections import OrderedDict
 
-
 crc8 = crcmod.predefined.mkCrcFun('crc-8')
 RETRY_INTERVAL = 0.2   # seconds
 MAX_SEEN = 100
 
 class ArduinoNode:
-    
     def __init__(self, port, arduino_id, event_callback):
         self.id = arduino_id
         self.event_callback = event_callback
@@ -25,6 +23,8 @@ class ArduinoNode:
         self.cmd_seq = 0
         self.pending = {}
         self.queue = deque()
+
+        self.money = 0
 
     def connect(self):
         now = time.time()
@@ -68,7 +68,6 @@ class ArduinoNode:
             self.ser.write(f"${body}*{crc:02X}\n".encode())
         except serial.SerialException:
             self.disconnect()
-
 
     def send_command(self, cmd_type, value):
         body = f"{cmd_type},{self.id},{self.cmd_seq},{value}"
@@ -126,7 +125,6 @@ class ArduinoNode:
                 return
         except ValueError:
             return
-
 
         parts = body.split(",")
 
@@ -187,7 +185,7 @@ class ArduinoNode:
 
 class GameController:
     def __init__(self):
-        self.score = {1: 0, 2: 0}
+        #self.score = {1: 0, 2: 0}
         self.nodes = {}
         self.airStart = 0
         self.airOn = False
@@ -220,19 +218,18 @@ class GameController:
         elif button == "coinBig":
             n = self.nodes.get(node)
             if n and n.is_ready():
-                self.nodes[node].send_command("D", "15")
-                print("D, 15")
+                self.nodes[node].money += 20
+                self.nodes[node].send_command("D", self.nodes[node].money)
+                print("D, +20")
         elif button == "coinSmall":
             n = self.nodes.get(node)
             if n and n.is_ready():
-                self.nodes[node].send_command("D", "10")
-                print("D, 10")
+                self.nodes[node].money += 10
+                self.nodes[node].send_command("D", self.nodes[node].money)
+                print("D, +10")
             
-
     def handle_goal(self, scoring_node, side):
         opponent = 2 if scoring_node == 1 else 1
-        # Disable opponent buttons for 2 seconds
-        #self.nodes[opponent].send_command("C", "DISABLE")
         print(f"awaka {opponent}")
         # Show animation based on side added later
 
@@ -241,6 +238,7 @@ class GameController:
         if self.airOn and time.time() - self.airStart > self.airTime:
             self.nodes[1].send_command("R", "noair")
             self.nodes[2].send_command("R", "noair")
+            print("all noair")
             self.airOn = False
 
     def sync_node_state(self, node_id):
@@ -253,9 +251,8 @@ class GameController:
             node.send_command("R", "air")
         else:
             node.send_command("R", "noair")
-
+        node.send_command("D", self.nodes[node].money)
         # Add more state here as your system grows
-
 
 
 controller = GameController()
