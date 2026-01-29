@@ -59,8 +59,8 @@ class ArduinoNode:
         self.queue.clear()
         self.cmd_seq = 0
 
-    # def is_ready(self):
-    #     return self.connected
+    def is_ready(self):
+        return self.connected
 
     def send_ack(self, sender_id, seq):
         body = f"A,{sender_id},{seq},OK"
@@ -217,20 +217,20 @@ class GameController:
     def handle_button(self, node, button):
         if button == "Air" and self.airOn == False:
             n = self.nodes.get(node)
-            if n and n.connected:
+            if n and n.connected: ################# is_ready
                 n.send_command("R", "air")
                 self.airOn = True
                 self.airStart = time.time()
                 if debug: print("R, air")
         elif button == "coinBig":
             n = self.nodes.get(node)
-            if n and n.connected:
+            if n and n.connected: ################# is_ready
                 self.money[node] += 20
                 node.send_command("D", self.money[node])
                 if debug: print("D, +20")
         elif button == "coinSmall":
             n = self.nodes.get(node)
-            if n and n.connected:
+            if n and n.connected: ################# is_ready
                 self.nodes[node].money += 10
                 node.send_command("D", self.money[node])
                 if debug: print("D, +10")
@@ -249,7 +249,7 @@ class GameController:
 
     def sync_node_state(self, node_id):
         node = self.nodes.get(node_id)
-        if not node or not node.connected:
+        if not node or not node.connected: ################# is_ready
             return
 
         # Authoritative replay
