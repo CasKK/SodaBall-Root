@@ -1,7 +1,7 @@
 #include <FastCRC.h>
-#include <MD_Parola.h>   //Display libary
-#include <MD_MAX72xx.h>  //Display libary
-#include <SPI.h>         //Display libary
+#include <MD_Parola.h>                     //Display libary
+#include <MD_MAX72xx.h>                    //Display libary
+#include <SPI.h>                           //Display libary
 #define HARDWARE_TYPE MD_MAX72XX::FC16_HW  //For Display
 
 FastCRC8 CRC8;
@@ -11,10 +11,15 @@ FastCRC8 CRC8;
    ========================= */
 
 const uint8_t ARDUINO_ID = 1;
-int lastCommandSeq = -1;
 
 const unsigned long retryInterval = 200;  // ms
 const unsigned long debounceTime = 300;   // ms
+
+#define SEEN_WINDOW 16
+
+int seenSeq[SEEN_WINDOW];
+int seenIndex = 0;
+
 
 const uint8_t lightSensorPin = A5;    //Light sensor lignal pin
 const uint8_t coinBig = 8;            //For add big coin
@@ -24,8 +29,8 @@ const uint8_t airRelay = 4;           //7;                    //For airRelay
 const uint8_t smokeRelay = 5;         //6;                  //For smokeRelay
 
 
-const int MAX_DEVICES = 1;                 //For display
-const int CS_PIN = 2;                      //For display
+const int MAX_DEVICES = 1;  //For display
+const int CS_PIN = 2;       //For display
 bool animatingDisplay = false;
 bool staticDisplay = false;
 MD_Parola display = MD_Parola(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);  //Display
@@ -104,9 +109,9 @@ void sendHead() {
   waitingForAck = true;
 }
 
-void sendCommandAck(int id, int seq) {
+void sendCommandAck(int seq) {
   char body[32];
-  snprintf(body, sizeof(body), "A,%d,%d,OK", id, seq);
+  snprintf(body, sizeof(body), "A,%d,%d,OK", ARDUINO_ID, seq);
 
   uint8_t crc = CRC8.smbus((uint8_t*)body, strlen(body));
 
@@ -117,10 +122,26 @@ void sendCommandAck(int id, int seq) {
   Serial.print("\n");
 }
 
+void initSeen() {
+  for (int i = 0; i < SEEN_WINDOW; i++) {
+    seenSeq[i] = -1;
+  }
+}
+bool isDuplicate(int seq) {
+  for (int i = 0; i < SEEN_WINDOW; i++) {
+    if (seenSeq[i] == seq) return true;
+  }
+  return false;
+}
+void recordSeq(int seq) {
+  seenSeq[seenIndex] = seq;
+  seenIndex = (seenIndex + 1) % SEEN_WINDOW;
+}
+
+
 /* =========================
    SERIAL RECEIVE
    ========================= */
-
 void handleLine(String line) {
   if (!line.startsWith("$") || line.indexOf('*') == -1) return;
 
@@ -133,7 +154,7 @@ void handleLine(String line) {
 
   char type;
   int id;
-  int rxSeq;
+  uint16_t rxSeq;
   char msg[8];
 
   int parsed = sscanf(body.c_str(), "%c,%d,%d,%7s",
@@ -141,61 +162,52 @@ void handleLine(String line) {
   if (parsed < 3) return;
   if (id != ARDUINO_ID) return;
 
-  if (type == 'A' && count > 0) {
-    if (rxSeq == queue[head].seq) {
-      // Pop queue
+  // ---------------------------
+  // 1) HANDLE ACKS FIRST
+  // ---------------------------
+  if (type == 'A') {
+    if (count > 0 && rxSeq == queue[head].seq) {
       head = (head + 1) % QUEUE_SIZE;
       count--;
-      waitingForAck = false;
     }
+    return;   // ACKs never go further
   }
-  if (type == 'R') {
-    bool commandHandled = false;
 
-    if (rxSeq <= lastCommandSeq) {
-    // Already handled → ACK again, do nothing
-    sendCommandAck(id, rxSeq);
+  // ---------------------------
+  // 2) DE-DUPLICATION (DATA ONLY)
+  // ---------------------------
+  if (isDuplicate(rxSeq)) {
+    sendCommandAck(rxSeq);
     return;
-    }
-    lastCommandSeq = rxSeq;
+  }
+  recordSeq(rxSeq);
 
+  // ---------------------------
+  // 3) APPLICATION COMMANDS
+  // ---------------------------
+  if (type == 'R') {
     if (strcmp(msg, "air") == 0) {
       digitalWrite(airRelay, HIGH);
-      commandHandled = true;
     } else if (strcmp(msg, "noair") == 0) {
       digitalWrite(airRelay, LOW);
-      commandHandled = true;
     } else if (strcmp(msg, "smoke") == 0) {
       digitalWrite(smokeRelay, HIGH);
-      commandHandled = true;
     } else if (strcmp(msg, "nosmoke") == 0) {
       digitalWrite(smokeRelay, LOW);
-      commandHandled = true;
-    }
-    if (commandHandled) {
-      sendCommandAck(id, rxSeq);
     }
   }
-  if (type == 'D') {
-    bool commandHandled = false;
 
-    if (rxSeq <= lastCommandSeq) {
-    // Already handled → ACK again, do nothing
-    sendCommandAck(id, rxSeq);
-    return;
-    }
-    lastCommandSeq = rxSeq;
-
-    char *endptr;
-    long number = strtol(msg, &endptr, 10);
-    number = float(number) / 10;
-    updateDisplay(number);
-
-    if (commandHandled) {
-      sendCommandAck(id, rxSeq);
-    }
+  else if (type == 'D') {
+    long number = strtol(msg, NULL, 10);
+    updateDisplay(number / 10.0);
   }
+
+  // ---------------------------
+  // 4) ACK AFTER SUCCESS
+  // ---------------------------
+  sendCommandAck(rxSeq);
 }
+
 
 /* =========================
    DEBOUNCE HELPERS
@@ -222,6 +234,7 @@ void setup() {
   pinMode(activateAirButton, INPUT_PULLUP);
   pinMode(airRelay, OUTPUT);
   pinMode(smokeRelay, OUTPUT);
+  initSeen();
   display.begin();
   display.setIntensity(5);
   display.displayClear();

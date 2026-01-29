@@ -14,18 +14,61 @@ class ArduinoNode:
     def __init__(self, port, arduino_id, event_callback):
         self.id = arduino_id
         self.event_callback = event_callback
-        self.ser = serial.Serial(port, 115200, timeout=0.05)
+
+        self.port = port
+        self.ser = None
+        self.connected = False
+        self.last_connect_attempt = 0
+        self.connect_interval = 0.5  # seconds
 
         self.seen = OrderedDict()
-
         self.cmd_seq = 0
         self.pending = {}
         self.queue = deque()
 
+    def connect(self):
+        now = time.time()
+        if now - self.last_connect_attempt < self.connect_interval:
+            return
+
+        self.last_connect_attempt = now
+        try:
+            self.ser = serial.Serial(self.port, 115200, timeout=0.05)
+            self.connected = True
+            self.on_connect()
+            print(f"[Node {self.id}] Connected on {self.port}")
+        except serial.SerialException:
+            self.connected = False
+
+    def disconnect(self):
+        if self.connected:
+            print(f"[Node {self.id}] Disconnected")
+        self.connected = False
+        try:
+            if self.ser:
+                self.ser.close()
+        except:
+            pass
+        self.ser = None
+
+    def on_connect(self):
+        # Arduino reboot == protocol reset
+        self.seen.clear()
+        self.pending.clear()
+        self.queue.clear()
+        self.cmd_seq = 0
+
+    def is_ready(self):
+        return self.connected
+
     def send_ack(self, sender_id, seq):
         body = f"A,{sender_id},{seq},OK"
         crc = crc8(body.encode())
-        self.ser.write(f"${body}*{crc:02X}\n".encode())
+        try:
+            self.ser.write(f"${body}*{crc:02X}\n".encode())
+        except serial.SerialException:
+            self.disconnect()
+
 
     def send_command(self, cmd_type, value):
         body = f"{cmd_type},{self.id},{self.cmd_seq},{value}"
@@ -36,8 +79,12 @@ class ArduinoNode:
             "time": time.time()
         }
         self.queue.append(self.cmd_seq)
+        try:
+            self.ser.write(frame.encode())
+        except serial.SerialException:
+            self.disconnect()
+            return
 
-        self.ser.write(frame.encode())
         self.cmd_seq += 1
 
     def process_retries(self):
@@ -48,13 +95,28 @@ class ArduinoNode:
         entry = self.pending.get(seq)
 
         if entry and time.time() - entry["time"] > RETRY_INTERVAL:
-            self.ser.write(entry["frame"].encode())
+            try:
+                self.ser.write(entry["frame"].encode())
+            except serial.SerialException:
+                self.disconnect()
+                return
             entry["time"] = time.time()
 
     def poll(self):
+        if not self.connected:
+            self.connect()
+            return
+
         self.process_retries()
 
-        line = self.ser.readline().decode(errors='ignore').strip()
+        try:
+            raw = self.ser.readline()
+        except serial.SerialException:
+            self.disconnect()
+            return
+
+        line = raw.decode(errors='ignore').strip()
+
         if not line.startswith("$") or "*" not in line:
             return
         
@@ -132,18 +194,23 @@ class GameController:
             self.handle_button(node, data[0])
 
     def handle_button(self, node, button):
-
         if button == "Air" and self.airOn == False:
-            self.nodes[node].send_command("R", "air")
-            self.airOn = True
-            self.airStart = time.time()
-            print("R, air")
+            n = self.nodes.get(node)
+            if n and n.is_ready():
+                n.send_command("R", "air")
+                self.airOn = True
+                self.airStart = time.time()
+                print("R, air")
         elif button == "coinBig":
-            self.nodes[node].send_command("D", "15")
-            print("D, 15")
+            n = self.nodes.get(node)
+            if n and n.is_ready():
+                self.nodes[node].send_command("D", "15")
+                print("D, 15")
         elif button == "coinSmall":
-            self.nodes[node].send_command("D", "10")
-            print("D, 10")
+            n = self.nodes.get(node)
+            if n and n.is_ready():
+                self.nodes[node].send_command("D", "10")
+                print("D, 10")
             
 
     def handle_goal(self, scoring_node, side):
@@ -159,6 +226,7 @@ class GameController:
             self.nodes[1].send_command("R", "noair")
             self.nodes[2].send_command("R", "noair")
             self.airOn = False
+
 
 
 controller = GameController()
