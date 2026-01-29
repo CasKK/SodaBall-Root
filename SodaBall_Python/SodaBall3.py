@@ -138,7 +138,21 @@ class ArduinoNode:
             seq = int(parts[2])
         except ValueError:
             return
+        
+        if msg_type == "H":
+            self.seen.clear()
+            self.pending.clear()
+            self.queue.clear()
+            self.cmd_seq = 0
 
+            self.event_callback({
+                "node": sender_id,
+                "type": "HELLO",
+                "data": []
+            })
+
+            self.send_ack(sender_id, seq)
+            return
 
         # ACK for outgoing commands
         if msg_type == "A":
@@ -189,9 +203,11 @@ class GameController:
 
         if etype == "G":
             self.handle_goal(node, data[0])
-
         elif etype == "B":
             self.handle_button(node, data[0])
+        elif etype == "HELLO":
+            self.sync_node_state(node)
+
 
     def handle_button(self, node, button):
         if button == "Air" and self.airOn == False:
@@ -226,6 +242,19 @@ class GameController:
             self.nodes[1].send_command("R", "noair")
             self.nodes[2].send_command("R", "noair")
             self.airOn = False
+
+    def sync_node_state(self, node_id):
+        node = self.nodes.get(node_id)
+        if not node or not node.is_ready():
+            return
+
+        # Authoritative replay
+        if self.airOn:
+            node.send_command("R", "air")
+        else:
+            node.send_command("R", "noair")
+
+        # Add more state here as your system grows
 
 
 
