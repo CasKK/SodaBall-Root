@@ -25,8 +25,6 @@ class ArduinoNode:
         self.pending = {}
         self.queue = deque()
 
-        self.money = 0
-
     def connect(self):
         now = time.time()
         if now - self.last_connect_attempt < self.connect_interval:
@@ -84,6 +82,7 @@ class ArduinoNode:
         }
         self.queue.append(self.cmd_seq)
         try:
+            print(frame)
             self.ser.write(frame.encode())
         except serial.SerialException:
             self.disconnect()
@@ -194,9 +193,15 @@ class GameController:
         #self.score = {1: 0, 2: 0}
         self.money = {1: 0, 2: 0}
         self.nodes = {}
-        self.airStart = 0
-        self.airOn = False
-        self.airTime = 5
+
+        self.airDuration = 5.0        # total air time
+        self.smokeStartDelay = 1.0   # seconds after air starts
+        self.smokeEndEarly = 1.0     # seconds before air ends
+        self.airStart = None
+        self.airActive = False
+        self.airPhase = "IDLE"
+        self.smokeActive = False
+
 
     def register_node(self, node):
         self.nodes[node.id] = node
@@ -214,26 +219,29 @@ class GameController:
             self.sync_node_state(node)
 
 
-    def handle_button(self, node, button):
-        if button == "Air" and self.airOn == False:
-            n = self.nodes.get(node)
-            if n and n.connected: ################# is_ready
-                n.send_command("R", "air")
-                self.airOn = True
-                self.airStart = time.time()
-                if debug: print("R, air")
+    def handle_button(self, node_id, button):
+        if button == "Air" and self.airPhase == "IDLE":
+            self.airPhase = "AIR"
+            self.airStart = time.time()
+            for node in self.nodes.values():
+                if node.is_ready():
+                    node.send_command("R", "air")
+            if debug: print("R, air, line 228")
+
         elif button == "coinBig":
-            n = self.nodes.get(node)
-            if n and n.connected: ################# is_ready
-                self.money[node] += 20
-                node.send_command("D", self.money[node])
+            n = self.nodes.get(node_id)
+            if n and n.is_ready():
+                self.money[node_id] += 20
+                n.send_command("D", self.money[node_id])
                 if debug: print("D, +20")
+
         elif button == "coinSmall":
-            n = self.nodes.get(node)
-            if n and n.connected: ################# is_ready
-                self.nodes[node].money += 10
-                node.send_command("D", self.money[node])
+            n = self.nodes.get(node_id)
+            if n and n.is_ready():
+                self.money[node_id] += 10
+                n.send_command("D", self.money[node_id])
                 if debug: print("D, +10")
+
             
     def handle_goal(self, scoring_node, side):
         opponent = 2 if scoring_node == 1 else 1
@@ -241,24 +249,76 @@ class GameController:
         # Show animation based on side added later
 
     def checkStates(self):
-        if self.airOn and time.time() - self.airStart > self.airTime:
-            self.nodes[1].send_command("R", "noair")
-            self.nodes[2].send_command("R", "noair")
-            if debug: print("all noair")
-            self.airOn = False
+        if self.airPhase == "IDLE":
+            return
+
+        elapsed = time.time() - self.airStart
+
+        # AIR → SMOKE
+        if self.airPhase == "AIR" and elapsed >= self.smokeStartDelay:
+            for node in self.nodes.values():
+                if node.is_ready():
+                    node.send_command("R", "smoke")
+            self.airPhase = "SMOKE"
+            if debug: print("R, smoke")
+
+        # SMOKE → NOSMOKE
+        elif self.airPhase == "SMOKE" and elapsed >= (self.airDuration - self.smokeEndEarly):
+            for node in self.nodes.values():
+                if node.is_ready():
+                    node.send_command("R", "nosmoke")
+            self.airPhase = "NOSMOKE"
+            if debug: print("R, nosmoke")
+
+        # NOSMOKE → DONE
+        elif self.airPhase == "NOSMOKE" and elapsed >= self.airDuration:
+            for node in self.nodes.values():
+                if node.is_ready():
+                    node.send_command("R", "noair")
+            self.airPhase = "IDLE"
+            self.airStart = None
+            if debug: print("R, noair")
+
+
+    # def checkStates(self):
+    #     if self.airOn and time.time() - self.airStart > self.airTime:
+    #         self.nodes[1].send_command("R", "noair")
+    #         self.nodes[2].send_command("R", "noair")
+    #         if debug: print("all noair")
+    #         self.airOn = False
 
     def sync_node_state(self, node_id):
         node = self.nodes.get(node_id)
-        if not node or not node.connected: ################# is_ready
+        if not node or not node.is_ready():
             return
 
-        # Authoritative replay
-        if self.airOn:
-            node.send_command("R", "air")
-        else:
+        if not self.airActive:
             node.send_command("R", "noair")
-        node.send_command("D", self.money[node_id])
-        # Add more state here as your system grows
+            node.send_command("R", "nosmoke")
+            return
+
+        node.send_command("R", "air")
+
+        elapsed = time.time() - self.airStart
+
+        if self.smokeStartDelay <= elapsed < (self.airDuration - self.smokeEndEarly):
+            node.send_command("R", "smoke")
+        else:
+            node.send_command("R", "nosmoke")
+
+
+    # def sync_node_state(self, node_id):
+    #     node = self.nodes.get(node_id)
+    #     if not node or not node.connected: ################# is_ready
+    #         return
+
+    #     # Authoritative replay
+    #     if self.airOn:
+    #         node.send_command("R", "air")
+    #     else:
+    #         node.send_command("R", "noair")
+    #     node.send_command("D", self.money[node_id])
+    #     # Add more state here as your system grows
 
 
 controller = GameController()
