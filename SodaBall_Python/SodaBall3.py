@@ -194,6 +194,7 @@ class GameController:
         self.money = {1: 0, 2: 0}
         self.nodes = {}
 
+        self.airOwner = None  # node_id that owns the current air sequence
         self.airDuration = 5.0        # total air time
         self.smokeStartDelay = 1.0   # seconds after air starts
         self.smokeEndEarly = 1.0     # seconds before air ends
@@ -221,12 +222,15 @@ class GameController:
 
     def handle_button(self, node_id, button):
         if button == "Air" and self.airPhase == "IDLE":
+            self.airOwner = node_id
             self.airPhase = "AIR"
             self.airStart = time.time()
-            for node in self.nodes.values():
-                if node.is_ready():
-                    node.send_command("R", "air")
-            if debug: print("R, air, line 228")
+
+            node = self.nodes.get(node_id)
+            if node and node.is_ready():
+                node.send_command("R", "air")
+
+            if debug: print(f"R, air → node {node_id}")
 
         elif button == "coinBig":
             n = self.nodes.get(node_id)
@@ -256,28 +260,29 @@ class GameController:
 
         # AIR → SMOKE
         if self.airPhase == "AIR" and elapsed >= self.smokeStartDelay:
-            for node in self.nodes.values():
-                if node.is_ready():
-                    node.send_command("R", "smoke")
+            node = self.nodes.get(self.airOwner)
+            if node and node.is_ready():
+                node.send_command("R", "smoke")
             self.airPhase = "SMOKE"
-            if debug: print("R, smoke")
+            print(f"R, smoke → node {self.airOwner}")
 
         # SMOKE → NOSMOKE
         elif self.airPhase == "SMOKE" and elapsed >= (self.airDuration - self.smokeEndEarly):
-            for node in self.nodes.values():
-                if node.is_ready():
-                    node.send_command("R", "nosmoke")
+            node = self.nodes.get(self.airOwner)
+            if node and node.is_ready():
+                node.send_command("R", "nosmoke")
             self.airPhase = "NOSMOKE"
-            if debug: print("R, nosmoke")
+            print(f"R, nosmoke → node {self.airOwner}")
 
         # NOSMOKE → DONE
         elif self.airPhase == "NOSMOKE" and elapsed >= self.airDuration:
-            for node in self.nodes.values():
-                if node.is_ready():
-                    node.send_command("R", "noair")
+            node = self.nodes.get(self.airOwner)
+            if node and node.is_ready():
+                node.send_command("R", "noair")
             self.airPhase = "IDLE"
+            self.airOwner = None
             self.airStart = None
-            if debug: print("R, noair")
+            print("R, noair → done")
 
 
     # def checkStates(self):
@@ -292,19 +297,23 @@ class GameController:
         if not node or not node.is_ready():
             return
 
-        if not self.airActive:
+        node.send_command("D", self.money[node_id])
+        # Node does NOT own air → force off
+        if self.airPhase == "IDLE" or node_id != self.airOwner:
             node.send_command("R", "noair")
             node.send_command("R", "nosmoke")
             return
 
+        # Node owns air → restore correct phase
         node.send_command("R", "air")
 
         elapsed = time.time() - self.airStart
 
-        if self.smokeStartDelay <= elapsed < (self.airDuration - self.smokeEndEarly):
+        if self.airPhase in ("SMOKE",):
             node.send_command("R", "smoke")
-        else:
+        elif self.airPhase in ("NOSMOKE",):
             node.send_command("R", "nosmoke")
+
 
 
     # def sync_node_state(self, node_id):
