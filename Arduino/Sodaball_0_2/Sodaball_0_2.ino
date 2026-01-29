@@ -10,7 +10,7 @@ FastCRC8 CRC8;
    CONFIGURATION
    ========================= */
 
-const uint8_t ARDUINO_ID = 1;
+const uint8_t ARDUINO_ID = 2; //###############################################################
 
 const unsigned long retryInterval = 200;  // ms
 const unsigned long debounceTime = 300;   // ms
@@ -242,6 +242,7 @@ void setup() {
   while (!display.displayAnimate()) {
   }
   display.displayReset();
+  enqueueEvent('H', "BOOT");
 }
 
 /* =========================

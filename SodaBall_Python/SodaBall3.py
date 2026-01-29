@@ -7,6 +7,7 @@ from collections import OrderedDict
 crc8 = crcmod.predefined.mkCrcFun('crc-8')
 RETRY_INTERVAL = 0.2   # seconds
 MAX_SEEN = 100
+debug = True
 
 class ArduinoNode:
     def __init__(self, port, arduino_id, event_callback):
@@ -36,18 +37,18 @@ class ArduinoNode:
             self.ser = serial.Serial(self.port, 115200, timeout=0.05)
             self.connected = True
             self.on_connect()
-            print(f"[Node {self.id}] Connected on {self.port}")
+            if debug: print(f"[Node {self.id}] Connected on {self.port}")
         except serial.SerialException:
             self.connected = False
 
     def disconnect(self):
         if self.connected:
-            print(f"[Node {self.id}] Disconnected")
+            if debug: print(f"[Node {self.id}] Disconnected")
         self.connected = False
         try:
             if self.ser:
                 self.ser.close()
-        except:
+        except serial.SerialException:
             pass
         self.ser = None
 
@@ -58,8 +59,8 @@ class ArduinoNode:
         self.queue.clear()
         self.cmd_seq = 0
 
-    def is_ready(self):
-        return self.connected
+    # def is_ready(self):
+    #     return self.connected
 
     def send_ack(self, sender_id, seq):
         body = f"A,{sender_id},{seq},OK"
@@ -70,6 +71,10 @@ class ArduinoNode:
             self.disconnect()
 
     def send_command(self, cmd_type, value):
+        if not self.connected or not self.ser:
+            self.disconnect()
+            return
+    
         body = f"{cmd_type},{self.id},{self.cmd_seq},{value}"
         frame = f"${body}*{crc8(body.encode()):02X}\n"
 
@@ -115,7 +120,8 @@ class ArduinoNode:
             return
 
         line = raw.decode(errors='ignore').strip()
-
+        if line and debug:
+            print(line)
         if not line.startswith("$") or "*" not in line:
             return
         
@@ -186,6 +192,7 @@ class ArduinoNode:
 class GameController:
     def __init__(self):
         #self.score = {1: 0, 2: 0}
+        self.money = {1: 0, 2: 0}
         self.nodes = {}
         self.airStart = 0
         self.airOn = False
@@ -210,40 +217,39 @@ class GameController:
     def handle_button(self, node, button):
         if button == "Air" and self.airOn == False:
             n = self.nodes.get(node)
-            if n and n.is_ready():
+            if n and n.connected:
                 n.send_command("R", "air")
                 self.airOn = True
                 self.airStart = time.time()
-                print("R, air")
+                if debug: print("R, air")
         elif button == "coinBig":
             n = self.nodes.get(node)
-            if n and n.is_ready():
-                self.nodes[node].money += 20
-                self.nodes[node].send_command("D", self.nodes[node].money)
-                print("D, +20")
+            if n and n.connected:
+                self.money[node] += 20
+                node.send_command("D", self.money[node])
+                if debug: print("D, +20")
         elif button == "coinSmall":
             n = self.nodes.get(node)
-            if n and n.is_ready():
+            if n and n.connected:
                 self.nodes[node].money += 10
-                self.nodes[node].send_command("D", self.nodes[node].money)
-                print("D, +10")
+                node.send_command("D", self.money[node])
+                if debug: print("D, +10")
             
     def handle_goal(self, scoring_node, side):
         opponent = 2 if scoring_node == 1 else 1
-        print(f"awaka {opponent}")
+        if debug: print(f"awaka {opponent}")
         # Show animation based on side added later
 
     def checkStates(self):
-        #print("hello")
         if self.airOn and time.time() - self.airStart > self.airTime:
             self.nodes[1].send_command("R", "noair")
             self.nodes[2].send_command("R", "noair")
-            print("all noair")
+            if debug: print("all noair")
             self.airOn = False
 
     def sync_node_state(self, node_id):
         node = self.nodes.get(node_id)
-        if not node or not node.is_ready():
+        if not node or not node.connected:
             return
 
         # Authoritative replay
@@ -251,7 +257,7 @@ class GameController:
             node.send_command("R", "air")
         else:
             node.send_command("R", "noair")
-        node.send_command("D", self.nodes[node].money)
+        node.send_command("D", self.money[node_id])
         # Add more state here as your system grows
 
 
