@@ -10,7 +10,7 @@ FastCRC8 CRC8;
    CONFIGURATION
    ========================= */
 
-const uint8_t ARDUINO_ID = 2; //###############################################################
+const uint8_t ARDUINO_ID = 1; //###############################################################
 
 const unsigned long retryInterval = 200;  // ms
 const unsigned long debounceTime = 300;   // ms
@@ -25,8 +25,8 @@ const uint8_t lightSensorPin = A5;    //Light sensor lignal pin
 const uint8_t coinBig = 8;            //For add big coin
 const uint8_t coinSmall = 9;          //For add small coin
 const uint8_t activateAirButton = 3;  //For start airRelay
-const uint8_t airRelay = 4;           //7;                    //For airRelay
-const uint8_t smokeRelay = 5;         //6;                  //For smokeRelay
+const uint8_t airRelay = 5;           //7;                    //For airRelay
+const uint8_t smokeRelay = 6;         //6;                  //For smokeRelay
 
 
 const int MAX_DEVICES = 1;  //For display

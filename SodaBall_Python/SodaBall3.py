@@ -196,7 +196,7 @@ class GameController:
         self.nodes = {}
 
         self.airOwner = None  # node_id that owns the current air sequence
-        self.airDuration = 7.0        # total air time
+        self.airDuration = 10.0        # total air time
         self.smokeStartDelay = 1.0   # seconds after air starts
         self.smokeEndEarly = 5.0     # seconds before air ends
         self.nosmokeDuration = 3.0
