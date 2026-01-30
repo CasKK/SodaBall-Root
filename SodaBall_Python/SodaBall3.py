@@ -3,6 +3,7 @@ import crcmod
 import time
 from collections import deque
 from collections import OrderedDict
+import threading
 
 crc8 = crcmod.predefined.mkCrcFun('crc-8')
 RETRY_INTERVAL = 0.2   # seconds
@@ -195,9 +196,10 @@ class GameController:
         self.nodes = {}
 
         self.airOwner = None  # node_id that owns the current air sequence
-        self.airDuration = 5.0        # total air time
+        self.airDuration = 7.0        # total air time
         self.smokeStartDelay = 1.0   # seconds after air starts
-        self.smokeEndEarly = 1.0     # seconds before air ends
+        self.smokeEndEarly = 5.0     # seconds before air ends
+        self.nosmokeDuration = 3.0
         self.airStart = None
         self.airActive = False
         self.airPhase = "IDLE"
@@ -245,12 +247,13 @@ class GameController:
                 self.money[node_id] += 10
                 n.send_command("D", self.money[node_id])
                 if debug: print("D, +10")
-
             
+
     def handle_goal(self, scoring_node, side):
         opponent = 2 if scoring_node == 1 else 1
         if debug: print(f"awaka {opponent}")
         # Show animation based on side added later
+
 
     def checkStates(self):
         if self.airPhase == "IDLE":
@@ -285,13 +288,6 @@ class GameController:
             print("R, noair → done")
 
 
-    # def checkStates(self):
-    #     if self.airOn and time.time() - self.airStart > self.airTime:
-    #         self.nodes[1].send_command("R", "noair")
-    #         self.nodes[2].send_command("R", "noair")
-    #         if debug: print("all noair")
-    #         self.airOn = False
-
     def sync_node_state(self, node_id):
         node = self.nodes.get(node_id)
         if not node or not node.is_ready():
@@ -315,22 +311,99 @@ class GameController:
             node.send_command("R", "nosmoke")
 
 
+    def manual_command(self, cmd):
+        parts = cmd.strip().split()
+        if not parts:
+            return
 
-    # def sync_node_state(self, node_id):
-    #     node = self.nodes.get(node_id)
-    #     if not node or not node.connected: ################# is_ready
-    #         return
+        op = parts[0].lower()
 
-    #     # Authoritative replay
-    #     if self.airOn:
-    #         node.send_command("R", "air")
-    #     else:
-    #         node.send_command("R", "noair")
-    #     node.send_command("D", self.money[node_id])
-    #     # Add more state here as your system grows
+        try:
+            if op == "air":
+                self.start_air(int(parts[1]))
+
+            elif op == "noair":
+                self.fast_forward_air()
+
+            elif op == "money":
+                node_id = int(parts[1])
+                delta = int(parts[2])
+                self.adjust_money(node_id, delta)
+
+            else:
+                print("Unknown command")
+
+        except (IndexError, ValueError):
+            print("Invalid command syntax")
+
+
+
+    def start_air(self, node_id):
+        if self.airPhase != "IDLE":
+            return  # ignore or log
+
+        node = self.nodes.get(node_id)
+        if not node or not node.is_ready():
+            return
+
+        self.airOwner = node_id
+        self.airStart = time.time()
+        self.airPhase = "AIR"
+
+        node.send_command("R", "air")
+
+        if debug:
+            print(f"[MANUAL] air → node {node_id}")
+    
+    def fast_forward_air(self):
+        if self.airPhase not in ("AIR", "SMOKE"):
+            return
+
+        node = self.nodes.get(self.airOwner)
+        if node and node.is_ready():
+            node.send_command("R", "nosmoke")
+
+        # Jump to the *start* of NOSMOKE, not the end
+        self.airPhase = "NOSMOKE"
+        self.airStart = time.time() - (self.airDuration - self.nosmokeDuration)
+
+        if debug:
+            print("[MANUAL] fast-forward → nosmoke (with dwell)")
+
+    
+    def adjust_money(self, node_id, delta):
+        if node_id not in self.money:
+            return
+
+        self.money[node_id] += delta
+
+        node = self.nodes.get(node_id)
+        if node and node.is_ready():
+            node.send_command("D", self.money[node_id])
+
+        if debug:
+            print(f"[MANUAL] money[{node_id}] += {delta} → {self.money[node_id]}")
+
+
+
+
 
 
 controller = GameController()
+
+def console_loop(controller):
+    while True:
+        try:
+            line = input("> ")
+            controller.manual_command(line)
+        except EOFError:
+            break
+
+threading.Thread(
+    target=console_loop,
+    args=(controller,),
+    daemon=True
+).start()
 
 nodes = [
     ArduinoNode("COM5", 1, controller.handle_event),
@@ -345,4 +418,5 @@ while True:
         node.poll()
     controller.checkStates()
     time.sleep(0.005)
+
 
