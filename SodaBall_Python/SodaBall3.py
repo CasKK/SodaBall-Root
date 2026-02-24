@@ -1,4 +1,5 @@
 import serial
+import serial.tools.list_ports
 import crcmod
 import time
 from collections import deque
@@ -9,6 +10,65 @@ crc8 = crcmod.predefined.mkCrcFun('crc-8')
 RETRY_INTERVAL = 0.2   # seconds
 MAX_SEEN = 100
 debug = True
+
+
+class PortProbe:
+    def __init__(self, port):
+        self.port = port
+        self.ser = serial.Serial(port, 115200, timeout=0.1)
+
+    def poll(self):
+        line = self.ser.readline().decode(errors="ignore").strip()
+        if not line.startswith("$") or "*" not in line:
+            return None
+
+        body, crc_hex = line[1:].split("*", 1)
+        parts = body.split(",")
+
+        if parts[0] == "H":
+            return int(parts[1])  # node_id
+
+        return None
+
+class NodeManager:
+    def __init__(self, controller):
+        self.controller = controller
+        self.probes = {}      # port → PortProbe
+        self.nodes_by_port = {}
+
+    def update(self):
+        current_ports = {p.device for p in serial.tools.list_ports.comports()}
+
+        # New ports
+        for port in current_ports:
+            if port not in self.probes and port not in self.nodes_by_port:
+                print(f"[DISCOVER] probing {port}")
+                try:
+                    self.probes[port] = PortProbe(port)
+                except:
+                    pass
+
+        # Probe for HELLO
+        for port, probe in list(self.probes.items()):
+            node_id = probe.poll()
+            if node_id is not None:
+                print(f"[DISCOVER] Node {node_id} on {port}")
+
+                probe.ser.close()
+                del self.probes[port]
+
+                node = ArduinoNode(port, node_id, self.controller.handle_event)
+                self.controller.register_node(node)
+                self.nodes_by_port[port] = node
+
+        # Removed ports
+        for port, node in list(self.nodes_by_port.items()):
+            if port not in current_ports:
+                print(f"[DISCOVER] removed {port}")
+                node.disconnect()
+                del self.nodes_by_port[port]
+                self.controller.nodes.pop(node.id, None)
+
 
 class ArduinoNode:
     def __init__(self, port, arduino_id, event_callback):
@@ -386,10 +446,8 @@ class GameController:
 
 
 
-
-
-
 controller = GameController()
+manager = NodeManager(controller)
 
 def console_loop(controller):
     while True:
@@ -405,18 +463,12 @@ threading.Thread(
     daemon=True
 ).start()
 
-nodes = [
-    ArduinoNode("COM5", 1, controller.handle_event),
-    ArduinoNode("COM4", 2, controller.handle_event),
-]
-
-for node in nodes:
-    controller.register_node(node)
-
 while True:
-    for node in nodes:
-        node.poll()
-    controller.checkStates()
-    time.sleep(0.005)
+    manager.update()
 
+    for node in list(manager.nodes_by_port.values()):
+        node.poll()
+
+    controller.checkStates()
+    time.sleep(0.01)
 
