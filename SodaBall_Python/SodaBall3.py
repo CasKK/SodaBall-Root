@@ -16,19 +16,44 @@ class PortProbe:
     def __init__(self, port):
         self.port = port
         self.ser = serial.Serial(port, 115200, timeout=0.1)
+        self.dead = False
 
     def poll(self):
-        line = self.ser.readline().decode(errors="ignore").strip()
+        if self.dead:
+            return None
+
+        try:
+            raw = self.ser.readline()
+        except (serial.SerialException, OSError):
+            # Port disappeared while probing
+            self._kill()
+            return None
+
+        if not raw:
+            return None
+
+        line = raw.decode(errors="ignore").strip()
+
         if not line.startswith("$") or "*" not in line:
             return None
 
-        body, crc_hex = line[1:].split("*", 1)
-        parts = body.split(",")
+        try:
+            body, crc_hex = line[1:].split("*", 1)
+            parts = body.split(",")
+        except ValueError:
+            return None
 
         if parts[0] == "H":
-            return int(parts[1])  # node_id
+            return int(parts[1])
 
         return None
+
+    def _kill(self):
+        self.dead = True
+        try:
+            self.ser.close()
+        except:
+            pass
 
 class NodeManager:
     def __init__(self, controller, required_ids):
@@ -65,6 +90,11 @@ class NodeManager:
 
         # Poll probes
         for port, probe in list(self.probes.items()):
+
+            if probe.dead:
+                del self.probes[port]
+                continue
+
             node_id = probe.poll()
             if node_id is None:
                 continue
@@ -129,7 +159,7 @@ class ArduinoNode:
             self.connected = True
             self.on_connect()
             if debug: print(f"[Node {self.id}] Connected on {self.port}")
-        except serial.SerialException:
+        except (serial.SerialException, OSError):
             self.connected = False
 
     def disconnect(self):
@@ -139,7 +169,7 @@ class ArduinoNode:
         try:
             if self.ser:
                 self.ser.close()
-        except serial.SerialException:
+        except (serial.SerialException, OSError):
             pass
         self.ser = None
 
@@ -158,7 +188,7 @@ class ArduinoNode:
         crc = crc8(body.encode())
         try:
             self.ser.write(f"${body}*{crc:02X}\n".encode())
-        except serial.SerialException:
+        except (serial.SerialException, OSError):
             self.disconnect()
 
     def send_command(self, cmd_type, value):
@@ -177,7 +207,7 @@ class ArduinoNode:
         try:
             print(frame)
             self.ser.write(frame.encode())
-        except serial.SerialException:
+        except (serial.SerialException, OSError):
             self.disconnect()
             return
 
@@ -193,7 +223,7 @@ class ArduinoNode:
         if entry and time.time() - entry["time"] > RETRY_INTERVAL:
             try:
                 self.ser.write(entry["frame"].encode())
-            except serial.SerialException:
+            except (serial.SerialException, OSError):
                 self.disconnect()
                 return
             entry["time"] = time.time()
@@ -207,7 +237,7 @@ class ArduinoNode:
 
         try:
             raw = self.ser.readline()
-        except serial.SerialException:
+        except (serial.SerialException, OSError):
             self.disconnect()
             return
 
