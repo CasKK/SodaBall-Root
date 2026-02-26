@@ -1,4 +1,5 @@
 import serial
+import serial.tools.list_ports
 import crcmod
 import time
 from collections import deque
@@ -9,6 +10,127 @@ crc8 = crcmod.predefined.mkCrcFun('crc-8')
 RETRY_INTERVAL = 0.2   # seconds
 MAX_SEEN = 100
 debug = True
+
+
+class PortProbe:
+    def __init__(self, port):
+        self.port = port
+        self.ser = serial.Serial(port, 115200, timeout=0.1)
+        self.dead = False
+
+    def poll(self):
+        if self.dead:
+            return None
+
+        try:
+            raw = self.ser.readline()
+        except (serial.SerialException, OSError):
+            # Port disappeared while probing
+            self._kill()
+            return None
+
+        if not raw:
+            return None
+
+        line = raw.decode(errors="ignore").strip()
+
+        if not line.startswith("$") or "*" not in line:
+            return None
+
+        try:
+            body, crc_hex = line[1:].split("*", 1)
+            parts = body.split(",")
+        except ValueError:
+            return None
+
+        if parts[0] == "H":
+            return int(parts[1])
+
+        return None
+
+    def _kill(self):
+        self.dead = True
+        try:
+            self.ser.close()
+        except:
+            pass
+
+class NodeManager:
+    def __init__(self, controller, required_ids):
+        self.controller = controller
+        self.required_ids = set(required_ids)
+        self.probes = {}
+        self.nodes_by_port = {}
+        self.discovery_complete = False
+
+    def update(self):
+        # If already complete, only monitor removal
+        if self.discovery_complete:
+            self._check_removals()
+            return
+
+        current_ports = {p.device for p in serial.tools.list_ports.comports()}
+
+        # Create probes only if still missing nodes
+        missing = self.required_ids - set(self.controller.nodes.keys())
+
+        if not missing:
+            print("[DISCOVER] All required nodes found. Stopping search.")
+            self.discovery_complete = True
+            return
+
+        # Probe new ports
+        for port in current_ports:
+            if port not in self.probes and port not in self.nodes_by_port:
+                try:
+                    print(f"[DISCOVER] probing {port}")
+                    self.probes[port] = PortProbe(port)
+                except:
+                    pass
+
+        # Poll probes
+        for port, probe in list(self.probes.items()):
+
+            if probe.dead:
+                del self.probes[port]
+                continue
+
+            node_id = probe.poll()
+            if node_id is None:
+                continue
+
+            # Ignore nodes we don't care about
+            if node_id not in self.required_ids:
+                print(f"[DISCOVER] Ignoring unexpected node {node_id}")
+                continue
+
+            # Ignore duplicates
+            if node_id in self.controller.nodes:
+                print(f"[DISCOVER] Duplicate node ID {node_id} ignored")
+                continue
+
+            print(f"[DISCOVER] Node {node_id} found on {port}")
+
+            probe.ser.close()
+            del self.probes[port]
+
+            node = ArduinoNode(port, node_id, self.controller.handle_event)
+            self.controller.register_node(node)
+            self.nodes_by_port[port] = node
+    
+    def _check_removals(self):
+        current_ports = {p.device for p in serial.tools.list_ports.comports()}
+
+        for port, node in list(self.nodes_by_port.items()):
+            if port not in current_ports:
+                print(f"[DISCOVER] Node {node.id} removed")
+                node.disconnect()
+                del self.nodes_by_port[port]
+                self.controller.nodes.pop(node.id, None)
+
+                # Restart discovery
+                self.discovery_complete = False
+
 
 class ArduinoNode:
     def __init__(self, port, arduino_id, event_callback):
@@ -37,7 +159,7 @@ class ArduinoNode:
             self.connected = True
             self.on_connect()
             if debug: print(f"[Node {self.id}] Connected on {self.port}")
-        except serial.SerialException:
+        except (serial.SerialException, OSError):
             self.connected = False
 
     def disconnect(self):
@@ -47,7 +169,7 @@ class ArduinoNode:
         try:
             if self.ser:
                 self.ser.close()
-        except serial.SerialException:
+        except (serial.SerialException, OSError):
             pass
         self.ser = None
 
@@ -66,7 +188,7 @@ class ArduinoNode:
         crc = crc8(body.encode())
         try:
             self.ser.write(f"${body}*{crc:02X}\n".encode())
-        except serial.SerialException:
+        except (serial.SerialException, OSError):
             self.disconnect()
 
     def send_command(self, cmd_type, value):
@@ -85,7 +207,7 @@ class ArduinoNode:
         try:
             print(frame)
             self.ser.write(frame.encode())
-        except serial.SerialException:
+        except (serial.SerialException, OSError):
             self.disconnect()
             return
 
@@ -101,7 +223,7 @@ class ArduinoNode:
         if entry and time.time() - entry["time"] > RETRY_INTERVAL:
             try:
                 self.ser.write(entry["frame"].encode())
-            except serial.SerialException:
+            except (serial.SerialException, OSError):
                 self.disconnect()
                 return
             entry["time"] = time.time()
@@ -115,7 +237,7 @@ class ArduinoNode:
 
         try:
             raw = self.ser.readline()
-        except serial.SerialException:
+        except (serial.SerialException, OSError):
             self.disconnect()
             return
 
@@ -386,10 +508,8 @@ class GameController:
 
 
 
-
-
-
 controller = GameController()
+manager = NodeManager(controller, required_ids={1, 2})
 
 def console_loop(controller):
     while True:
@@ -405,18 +525,12 @@ threading.Thread(
     daemon=True
 ).start()
 
-nodes = [
-    ArduinoNode("COM5", 1, controller.handle_event),
-    ArduinoNode("COM4", 2, controller.handle_event),
-]
-
-for node in nodes:
-    controller.register_node(node)
-
 while True:
-    for node in nodes:
-        node.poll()
-    controller.checkStates()
-    time.sleep(0.005)
+    manager.update()
 
+    for node in list(manager.nodes_by_port.values()):
+        node.poll()
+
+    controller.checkStates()
+    time.sleep(0.01)
 
