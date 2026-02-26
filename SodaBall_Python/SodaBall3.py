@@ -31,43 +31,75 @@ class PortProbe:
         return None
 
 class NodeManager:
-    def __init__(self, controller):
+    def __init__(self, controller, required_ids):
         self.controller = controller
-        self.probes = {}      # port → PortProbe
+        self.required_ids = set(required_ids)
+        self.probes = {}
         self.nodes_by_port = {}
+        self.discovery_complete = False
 
     def update(self):
+        # If already complete, only monitor removal
+        if self.discovery_complete:
+            self._check_removals()
+            return
+
         current_ports = {p.device for p in serial.tools.list_ports.comports()}
 
-        # New ports
+        # Create probes only if still missing nodes
+        missing = self.required_ids - set(self.controller.nodes.keys())
+
+        if not missing:
+            print("[DISCOVER] All required nodes found. Stopping search.")
+            self.discovery_complete = True
+            return
+
+        # Probe new ports
         for port in current_ports:
             if port not in self.probes and port not in self.nodes_by_port:
-                print(f"[DISCOVER] probing {port}")
                 try:
+                    print(f"[DISCOVER] probing {port}")
                     self.probes[port] = PortProbe(port)
                 except:
                     pass
 
-        # Probe for HELLO
+        # Poll probes
         for port, probe in list(self.probes.items()):
             node_id = probe.poll()
-            if node_id is not None:
-                print(f"[DISCOVER] Node {node_id} on {port}")
+            if node_id is None:
+                continue
 
-                probe.ser.close()
-                del self.probes[port]
+            # Ignore nodes we don't care about
+            if node_id not in self.required_ids:
+                print(f"[DISCOVER] Ignoring unexpected node {node_id}")
+                continue
 
-                node = ArduinoNode(port, node_id, self.controller.handle_event)
-                self.controller.register_node(node)
-                self.nodes_by_port[port] = node
+            # Ignore duplicates
+            if node_id in self.controller.nodes:
+                print(f"[DISCOVER] Duplicate node ID {node_id} ignored")
+                continue
 
-        # Removed ports
+            print(f"[DISCOVER] Node {node_id} found on {port}")
+
+            probe.ser.close()
+            del self.probes[port]
+
+            node = ArduinoNode(port, node_id, self.controller.handle_event)
+            self.controller.register_node(node)
+            self.nodes_by_port[port] = node
+    
+    def _check_removals(self):
+        current_ports = {p.device for p in serial.tools.list_ports.comports()}
+
         for port, node in list(self.nodes_by_port.items()):
             if port not in current_ports:
-                print(f"[DISCOVER] removed {port}")
+                print(f"[DISCOVER] Node {node.id} removed")
                 node.disconnect()
                 del self.nodes_by_port[port]
                 self.controller.nodes.pop(node.id, None)
+
+                # Restart discovery
+                self.discovery_complete = False
 
 
 class ArduinoNode:
@@ -447,7 +479,7 @@ class GameController:
 
 
 controller = GameController()
-manager = NodeManager(controller)
+manager = NodeManager(controller, required_ids={1, 2})
 
 def console_loop(controller):
     while True:
