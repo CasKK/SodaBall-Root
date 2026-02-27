@@ -5,6 +5,7 @@ import time
 from collections import deque
 from collections import OrderedDict
 import threading
+import pygame
 
 crc8 = crcmod.predefined.mkCrcFun('crc-8')
 RETRY_INTERVAL = 0.2   # seconds
@@ -525,18 +526,64 @@ def console_loop(controller):
         except EOFError:
             break
 
-threading.Thread(
-    target=console_loop,
-    args=(controller,),
-    daemon=True
-).start()
+threading.Thread(target=console_loop, args=(controller,), daemon=True).start()
 
-while True:
-    manager.update()
+def game_loop():
+    while True:
+        manager.update()
+        for node in list(manager.nodes_by_port.values()):
+            node.poll()
+        controller.checkStates()
+        time.sleep(0.01)
 
-    for node in list(manager.nodes_by_port.values()):
-        node.poll()
+threading.Thread(target=game_loop, daemon=True).start()
 
-    controller.checkStates()
-    time.sleep(0.01)
 
+
+# ---- Pygame UI ----
+pygame.init()
+WIDTH, HEIGHT = 800, 480
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Game UI Example")
+
+# Fonts & colors
+font = pygame.font.SysFont("Arial", 36)
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+GREEN = (0, 255, 0)
+RED = (255, 0, 0)
+YELLOW = (255, 255, 0)
+
+clock = pygame.time.Clock()
+
+# ---- Main Pygame loop ----
+running = True
+while running:
+    screen.fill(BLACK)
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    # Draw money for each node
+    for idx, node_id in enumerate(controller.money.keys(), start=1):
+        money_text = font.render(f"Node {node_id} Money: ${controller.money[node_id]}", True, WHITE)
+        screen.blit(money_text, (50, 50 * idx))
+
+    # Draw air phase visualization
+    air_phase = controller.airPhase
+    air_owner = controller.airOwner
+
+    if air_phase != "IDLE" and air_owner:
+        color = RED if air_phase == "AIR" else YELLOW if air_phase == "SMOKE" else GREEN
+        pygame.draw.rect(screen, color, pygame.Rect(400, 100, 200, 50))
+        phase_text = font.render(f"Node {air_owner} Phase: {air_phase}", True, BLACK)
+        screen.blit(phase_text, (410, 110))
+    else:
+        idle_text = font.render("Air Phase: IDLE", True, WHITE)
+        screen.blit(idle_text, (400, 110))
+
+    pygame.display.flip()
+    clock.tick(60)  # limit to 60 FPS
+
+pygame.quit()
