@@ -63,50 +63,56 @@ class NodeManager:
         self.nodes_by_port = {}
         self.discovery_complete = False
 
+        self.scan_interval = 0.5      # seconds
+        self.last_scan_time = 0
+    
     def update(self):
-        # If already complete, only monitor removal
+        now = time.time()
+
+        # Always monitor removals quickly
+        self._check_removals()
+
+        # Only scan occasionally
+        if now - self.last_scan_time < self.scan_interval:
+            return
+
+        self.last_scan_time = now
+
+        # If already complete, don't probe
         if self.discovery_complete:
-            self._check_removals()
+            return
+
+        missing = self.required_ids - set(self.controller.nodes.keys())
+        if not missing:
+            print("[DISCOVER] All required nodes found.")
+            self.discovery_complete = True
             return
 
         current_ports = {p.device for p in serial.tools.list_ports.comports()}
 
-        # Create probes only if still missing nodes
-        missing = self.required_ids - set(self.controller.nodes.keys())
-
-        if not missing:
-            print("[DISCOVER] All required nodes found. Stopping search.")
-            self.discovery_complete = True
-            return
-
-        # Probe new ports
         for port in current_ports:
-            if port not in self.probes and port not in self.nodes_by_port:
-                try:
-                    print(f"[DISCOVER] probing {port}")
-                    self.probes[port] = PortProbe(port)
-                except:
-                    pass
+            if port in self.probes or port in self.nodes_by_port:
+                continue
+
+            # Only probe USB devices (important!)
+            if "ttyUSB" not in port and "ttyACM" not in port:
+                continue
+
+            try:
+                print(f"[DISCOVER] probing {port}")
+                self.probes[port] = PortProbe(port)
+            except:
+                pass
 
         # Poll probes
         for port, probe in list(self.probes.items()):
+            node_id = probe.poll()
 
             if probe.dead:
                 del self.probes[port]
                 continue
 
-            node_id = probe.poll()
             if node_id is None:
-                continue
-
-            # Ignore nodes we don't care about
-            if node_id not in self.required_ids:
-                print(f"[DISCOVER] Ignoring unexpected node {node_id}")
-                continue
-
-            # Ignore duplicates
-            if node_id in self.controller.nodes:
-                print(f"[DISCOVER] Duplicate node ID {node_id} ignored")
                 continue
 
             print(f"[DISCOVER] Node {node_id} found on {port}")
@@ -117,7 +123,7 @@ class NodeManager:
             node = ArduinoNode(port, node_id, self.controller.handle_event)
             self.controller.register_node(node)
             self.nodes_by_port[port] = node
-    
+
     def _check_removals(self):
         current_ports = {p.device for p in serial.tools.list_ports.comports()}
 
