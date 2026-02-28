@@ -625,6 +625,11 @@ GREEN = (0, 255, 0)
 RED = (220, 0, 0)
 YELLOW = (255, 255, 0)
 
+last_score_1 = None
+last_score_2 = None
+score_surface_1 = None
+score_surface_2 = None
+
 clock = pygame.time.Clock()
 
 # ---- Main Pygame loop ----
@@ -650,11 +655,26 @@ while running:
     text_rect = money_text.get_rect()
     screen.blit(money_text, (int(WIDTH-((WIDTH/50)+text_rect.width)), 50))
 
-    score_text = font1.render(f"{int((controller.score[1])/20)}", True, RED)
-    screen.blit(score_text, (int((WIDTH/7)), int(HEIGHT/20)))
-    score_text = font1.render(f"{int((controller.score[2])/20)}", True, RED)
-    text_rect = score_text.get_rect()
-    screen.blit(score_text, (int(WIDTH-((WIDTH/7)+text_rect.width)), int(HEIGHT/20)))
+    current_score_1 = int(controller.score[1] / 20)
+    current_score_2 = int(controller.score[2] / 20)
+
+    # Re-render only if score changed
+    if current_score_1 != last_score_1:
+        score_surface_1 = font1.render(str(current_score_1), True, RED)
+        last_score_1 = current_score_1
+
+    if current_score_2 != last_score_2:
+        score_surface_2 = font1.render(str(current_score_2), True, RED)
+        last_score_2 = current_score_2
+
+    # Draw cached surfaces
+    screen.blit(score_surface_1, (WIDTH // 7, HEIGHT // 20))
+
+    text_rect = score_surface_2.get_rect()
+    screen.blit(
+        score_surface_2,
+        (WIDTH - ((WIDTH // 7) + text_rect.width), HEIGHT // 20)
+    )
 
     # Draw air phase visualization
     air_phase = controller.airPhase
