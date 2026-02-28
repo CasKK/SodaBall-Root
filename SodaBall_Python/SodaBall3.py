@@ -7,6 +7,8 @@ from collections import OrderedDict
 import threading
 import pygame
 from pathlib import Path
+import random
+import sys
 
 crc8 = crcmod.predefined.mkCrcFun('crc-8')
 RETRY_INTERVAL = 0.2   # seconds
@@ -321,7 +323,7 @@ class ArduinoNode:
 
 class GameController:
     def __init__(self):
-        #self.score = {1: 0, 2: 0}
+        self.score = {1: 0, 2: 0}
         self.money = {1: 0, 2: 0}
         self.nodes = {}
 
@@ -545,51 +547,139 @@ BASE_DIR = Path(__file__).resolve().parent
 def asset_path(*parts):
     return BASE_DIR.joinpath("Figures_and_Fonts", *parts)
 
+# ---------------------------
+# Wind configuration
+# ---------------------------
+WIND_COUNT = 200
+WIND_SPEED_MIN = 60
+WIND_SPEED_MAX = 100
+WIND_WIDTH = 30
+WIND_HEIGHT = 5
+AIR_DIRECTION = "right"
+show_air = False
+
+class WindEffect:
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.y = random.randint(0, HEIGHT)
+        self.speed = random.uniform(WIND_SPEED_MIN, WIND_SPEED_MAX)
+
+        if AIR_DIRECTION == "right":
+            self.x = random.randint(-WIDTH, 0)
+        else:  # "left"
+            self.x = random.randint(WIDTH, WIDTH * 2)
+
+    def update(self):
+        if AIR_DIRECTION == "right":
+            self.x += self.speed
+            if self.x > WIDTH:
+                self.reset()
+        else:  # "left"
+            self.x -= self.speed
+            if self.x < 0:
+                self.reset()
+
+    def draw(self, surface):
+        pygame.draw.rect(
+            surface,
+            (200, 200, 200),
+            (self.x, self.y, WIND_WIDTH, WIND_HEIGHT)
+        )
+
 
 # ---- Pygame UI ----
 pygame.init()
-WIDTH, HEIGHT = 800, 480
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-#screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-pygame.display.set_caption("Game UI Example")
+#WIDTH, HEIGHT = 1920, 1080
+#screen = pygame.display.set_mode((WIDTH, HEIGHT))
+screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+WIDTH, HEIGHT = screen.get_size()
+pygame.display.set_caption("SodaBall")
 
 # Fonts & colors
 #font = pygame.font.SysFont("Arial", 36)
-font = pygame.font.Font(asset_path("Press_Start_2P/PressStart2P-Regular.ttf"), 36)
+font = pygame.font.Font(asset_path("Press_Start_2P/PressStart2P-Regular.ttf"), 100)
+font1 = pygame.font.Font(asset_path("digital_7/digital-7.ttf"), 1000)
+wind_img_ = pygame.image.load(asset_path("Wind.png")).convert_alpha()
+wind_img = pygame.transform.scale(wind_img_, (254, 254))
+wind_img1 = pygame.transform.flip(wind_img, True, False)
+bane_img_ = pygame.image.load(asset_path("Bane.png")).convert()
+bane_img = pygame.transform.scale(bane_img_, (WIDTH, HEIGHT))
+windsock_frames = [
+    pygame.transform.scale(
+        pygame.image.load(
+            asset_path(f"pixilart_windsock/windsock_{i+1}.png")
+        ).convert_alpha(),
+        (372, 306)
+    )
+    for i in range(4)
+]
+windsock_frames1 = [
+    pygame.transform.flip(windsock_frames[i], True, False)
+    for i in range(4)
+]
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GREEN = (0, 255, 0)
-RED = (255, 0, 0)
+RED = (220, 0, 0)
 YELLOW = (255, 255, 0)
 
 clock = pygame.time.Clock()
 
 # ---- Main Pygame loop ----
+wind = [WindEffect() for _ in range(WIND_COUNT)]
 running = True
 while running:
     screen.fill(BLACK)
-
+    screen.blit(bane_img, (0, 0))
+    screen.blit(wind_img, (int(WIDTH-(WIDTH/12)-254), -20))
+    screen.blit(wind_img1, (int((WIDTH/12)), -20))
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
 
-    # Draw money for each node
-    for idx, node_id in enumerate(controller.money.keys(), start=1):
-        money_text = font.render(f"Node {node_id} Money: ${controller.money[node_id]}", True, WHITE)
-        screen.blit(money_text, (50, 50 * idx))
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                running = False
+
+    # Draw info for each team
+    money_text = font.render(f"{int((controller.money[1])/20)}", True, RED)
+    screen.blit(money_text, (int((WIDTH/50)), 50))
+    money_text = font.render(f"{int((controller.money[2])/20)}", True, RED)
+    text_rect = money_text.get_rect()
+    screen.blit(money_text, (int(WIDTH-((WIDTH/50)+text_rect.width)), 50))
+
+    score_text = font1.render(f"{int((controller.score[1])/20)}", True, RED)
+    screen.blit(score_text, (int((WIDTH/7)), int(HEIGHT/20)))
+    score_text = font1.render(f"{int((controller.score[2])/20)}", True, RED)
+    text_rect = score_text.get_rect()
+    screen.blit(score_text, (int(WIDTH-((WIDTH/7)+text_rect.width)), int(HEIGHT/20)))
 
     # Draw air phase visualization
     air_phase = controller.airPhase
     air_owner = controller.airOwner
 
-    if air_phase != "IDLE" and air_owner:
-        color = RED if air_phase == "AIR" else YELLOW if air_phase == "SMOKE" else GREEN
-        pygame.draw.rect(screen, color, pygame.Rect(400, 100, 200, 50))
-        phase_text = font.render(f"Node {air_owner} Phase: {air_phase}", True, BLACK)
-        screen.blit(phase_text, (410, 110))
-    else:
-        idle_text = font.render("Air Phase: IDLE", True, WHITE)
-        screen.blit(idle_text, (400, 110))
+    if air_phase != "IDLE":
+        if show_air == False:
+            if air_owner == 1:
+                AIR_DIRECTION = "right"
+            else:
+                AIR_DIRECTION = "left"
+            show_air = True
+        if air_owner == 1:
+            frame_index = (pygame.time.get_ticks() // 100) % len(windsock_frames)
+            screen.blit(windsock_frames[frame_index], (int(WIDTH/2-186), HEIGHT-306))
+        else:
+            frame_index = (pygame.time.get_ticks() // 100) % len(windsock_frames)
+            screen.blit(windsock_frames1[frame_index], (int(WIDTH/2-186), HEIGHT-306))
+    if air_phase == "IDLE":
+        show_air = False
+    
+    if show_air:
+        for particle in wind:
+            particle.update()
+            particle.draw(screen)
 
     pygame.display.flip()
     clock.tick(30)  # limit to 30 FPS
