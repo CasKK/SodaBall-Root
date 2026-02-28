@@ -6,6 +6,7 @@ from collections import deque
 from collections import OrderedDict
 import threading
 import pygame
+from pathlib import Path
 
 crc8 = crcmod.predefined.mkCrcFun('crc-8')
 RETRY_INTERVAL = 0.2   # seconds
@@ -539,15 +540,22 @@ def game_loop():
 threading.Thread(target=game_loop, daemon=True).start()
 
 
+###### File path stuff ######
+BASE_DIR = Path(__file__).resolve().parent
+def asset_path(*parts):
+    return BASE_DIR.joinpath("Figures_and_Fonts", *parts)
+
 
 # ---- Pygame UI ----
 pygame.init()
 WIDTH, HEIGHT = 800, 480
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
+#screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 pygame.display.set_caption("Game UI Example")
 
 # Fonts & colors
-font = pygame.font.SysFont("Arial", 36)
+#font = pygame.font.SysFont("Arial", 36)
+font = pygame.font.Font(asset_path("Press_Start_2P/PressStart2P-Regular.ttf"), 36)
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GREEN = (0, 255, 0)
@@ -584,6 +592,7 @@ while running:
         screen.blit(idle_text, (400, 110))
 
     pygame.display.flip()
-    clock.tick(60)  # limit to 60 FPS
+    clock.tick(30)  # limit to 30 FPS
 
 pygame.quit()
+
