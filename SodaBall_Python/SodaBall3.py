@@ -598,6 +598,9 @@ surface = window.get_surface()
 # Internal render surface
 # ---------------------------
 render_surface = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
+render_surface1 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT), pygame.SRCALPHA)
+render_surface2 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT), pygame.SRCALPHA)
+render_surface3 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT), pygame.SRCALPHA)
 
 # Fonts
 font = pygame.font.Font(asset_path("Press_Start_2P/PressStart2P-Regular.ttf"), 60)
@@ -690,6 +693,9 @@ while running:
     # ---------------------------
     render_surface.fill(BLACK)
     render_surface.blit(bane_img, (0, 0))
+    render_surface1.fill((0, 0, 0, 0))
+    render_surface2.fill((0, 0, 0, 0))
+    render_surface3.fill((0, 0, 0, 0)) 
 
     render_surface.blit(wind_img,
         (int(BASE_WIDTH - BASE_WIDTH/12 - wind_img.get_width()), -20))
@@ -698,13 +704,13 @@ while running:
 
     # Money
     money_text_1 = font.render(f"{int(controller.money[1]/20)}", True, RED)
-    render_surface.blit(money_text_1, (int(BASE_WIDTH/50), 15))
-
     money_text_2 = font.render(f"{int(controller.money[2]/20)}", True, RED)
-    render_surface.blit(
-        money_text_2,
-        (int(BASE_WIDTH - (BASE_WIDTH/50 + money_text_2.get_width())), 15)
-    )
+
+    render_surface1.blit(money_text_1, (int(BASE_WIDTH/50), 15))
+    render_surface1.blit(money_text_2,(int(BASE_WIDTH - (BASE_WIDTH/50 + money_text_2.get_width())), 15))
+
+    render_surface2.blit(money_text_1,(int(BASE_WIDTH - (BASE_WIDTH/50 + money_text_1.get_width())), 15))
+    render_surface2.blit(money_text_2, (int(BASE_WIDTH/50), 15))
 
     # Score caching
     current_score_1 = int(controller.score[1])
@@ -720,11 +726,10 @@ while running:
 
     score_height = (BASE_HEIGHT // 2) - (score_surface_1.get_height() // 2)
 
-    render_surface.blit(score_surface_1, (BASE_WIDTH // 6, score_height))
-    render_surface.blit(
-        score_surface_2,
-        (BASE_WIDTH - (BASE_WIDTH // 6 + score_surface_2.get_width()), score_height)
-    )
+    render_surface1.blit(score_surface_1, (BASE_WIDTH // 6, score_height))
+    render_surface1.blit(score_surface_2, (BASE_WIDTH - (BASE_WIDTH // 6 + score_surface_2.get_width()), score_height))
+    render_surface2.blit(score_surface_2, (BASE_WIDTH // 6, score_height))
+    render_surface2.blit(score_surface_1, (BASE_WIDTH - (BASE_WIDTH // 6 + score_surface_1.get_width()), score_height))
 
     # Windsock
     air_phase = controller.airPhase
@@ -736,13 +741,13 @@ while running:
         frame_index = (pygame.time.get_ticks() // 100) % len(windsock_frames)
 
         if air_owner == 1:
-            render_surface.blit(
+            render_surface3.blit(
                 windsock_frames[frame_index],
                 (BASE_WIDTH//2 - windsock_frames[0].get_width()//2,
                  BASE_HEIGHT - windsock_frames[0].get_height())
             )
         else:
-            render_surface.blit(
+            render_surface3.blit(
                 windsock_frames1[frame_index],
                 (BASE_WIDTH//2 - windsock_frames1[0].get_width()//2,
                  BASE_HEIGHT - windsock_frames1[0].get_height())
@@ -753,16 +758,22 @@ while running:
     if show_air:
         for particle in wind:
             particle.update(dt)
-            particle.draw(render_surface)
+            particle.draw(render_surface3)
 
+    # Mirror for right monitor
+    mirrored = pygame.transform.flip(render_surface, True, False)
+
+    render_surface.blit(render_surface1, (0,0))
+    render_surface.blit(render_surface3, (0,0))
     # Scale base render to monitor size
     scaled_left = pygame.transform.scale(
         render_surface,
         (LEFT_WIDTH, LEFT_HEIGHT)
     )
 
-    # Mirror for right monitor
-    mirrored = pygame.transform.flip(render_surface, True, False)
+    mirrored.blit(render_surface2, (0,0))
+    mirrored_render_surface3 = pygame.transform.flip(render_surface3, True, False)
+    mirrored.blit(mirrored_render_surface3, (0,0))
     scaled_right = pygame.transform.scale(
         mirrored,
         (RIGHT_WIDTH, RIGHT_HEIGHT)
