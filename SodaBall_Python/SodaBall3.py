@@ -331,8 +331,11 @@ class GameController:
         self.airOwner = None  # node_id that owns the current air sequence
         self.airDuration = 10.0        # total air time
         self.smokeStartDelay = 1.0   # seconds after air starts
-        self.smokeEndEarly = 5.0     # seconds before air ends
+        self.smokeDuration = 5.0     # seconds before air ends
         self.nosmokeDuration = 3.0
+        self.airCost = 20
+        self.bigCoin = 20
+        self.smallCoin = 10
         self.airStart = None
         self.airActive = False
         self.airPhase = "IDLE"
@@ -356,15 +359,15 @@ class GameController:
 
 
     def handle_button(self, node_id, button):
-        if button == "Air" and self.airPhase == "IDLE":
+        if button == "Air" and self.airPhase == "IDLE" and self.money[node_id] >= self.airCost:
             self.airOwner = node_id
             self.airPhase = "AIR"
             self.airStart = time.time()
-
+            self.money[node_id] -= self.airCost
             node = self.nodes.get(node_id)
             if node and node.is_ready():
                 node.send_command("R", "air")
-
+                node.send_command("D", self.money[node_id])
             if debug: print(f"R, air → node {node_id}")
 
         elif button == "coinBig":
@@ -372,19 +375,20 @@ class GameController:
             if n and n.is_ready():
                 self.money[node_id] += 20
                 n.send_command("D", self.money[node_id])
-                if debug: print("D, +20")
+                if debug: print("D, +bigCoin")
 
         elif button == "coinSmall":
             n = self.nodes.get(node_id)
             if n and n.is_ready():
                 self.money[node_id] += 10
                 n.send_command("D", self.money[node_id])
-                if debug: print("D, +10")
+                if debug: print("D, +smallCoin")
             
 
     def handle_goal(self, scoring_node, side):
-        opponent = 2 if scoring_node == 1 else 1
-        if debug: print(f"awaka {opponent}")
+        self.score[scoring_node] += 1
+
+        if debug: print(f"awaka {self.score[scoring_node]}")
         # Show animation based on side added later
 
 
@@ -403,7 +407,7 @@ class GameController:
             print(f"R, smoke → node {self.airOwner}")
 
         # SMOKE → NOSMOKE
-        elif self.airPhase == "SMOKE" and elapsed >= (self.airDuration - self.smokeEndEarly):
+        elif self.airPhase == "SMOKE" and elapsed >= (self.airDuration - self.smokeDuration):
             node = self.nodes.get(self.airOwner)
             if node and node.is_ready():
                 node.send_command("R", "nosmoke")
@@ -518,7 +522,7 @@ class GameController:
             print(f"[MANUAL] money[{node_id}] += {delta} → {self.money[node_id]}")
 
 
-os.environ["SDL_VIDEO_WINDOW_POS"] = "0,0"
+#os.environ["SDL_VIDEO_WINDOW_POS"] = "0,0"
 controller = GameController()
 manager = NodeManager(controller, required_ids={1, 2})
 
@@ -585,7 +589,7 @@ TOTAL_HEIGHT = LEFT_HEIGHT
 # Create one spanning borderless window
 window = Window(
     "SodaBall",
-    size=(TOTAL_WIDTH, TOTAL_HEIGHT)
+    size=(TOTAL_WIDTH + LEFT_WIDTH, TOTAL_HEIGHT) # Extra size because SDL or X11 don't care about placement commands apparently...
 )
 window.borderless = True
 
@@ -703,8 +707,8 @@ while running:
     )
 
     # Score caching
-    current_score_1 = int(controller.score[1] / 20)
-    current_score_2 = int(controller.score[2] / 20)
+    current_score_1 = int(controller.score[1])
+    current_score_2 = int(controller.score[2])
 
     if current_score_1 != last_score_1:
         score_surface_1 = font1.render(str(current_score_1), True, RED)
@@ -763,10 +767,13 @@ while running:
         mirrored,
         (RIGHT_WIDTH, RIGHT_HEIGHT)
     )
+    #empty_surface = pygame.Surface((LEFT_WIDTH, LEFT_HEIGHT))  # same height, width of leftover
+    #empty_surface.fill((0, 0, 0))  # black, or whatever background color you want
 
     # Draw both halves into spanning window
-    surface.blit(scaled_left, (0, 0))
-    surface.blit(scaled_right, (LEFT_WIDTH, 0))
+    surface.blit(scaled_left, (LEFT_WIDTH, 0))
+    surface.blit(scaled_right, (LEFT_WIDTH+LEFT_WIDTH, 0))
+    #surface.blit(empty_surface, (LEFT_WIDTH, 0))
 
     window.flip()
 
