@@ -642,7 +642,7 @@ profile_pictures = [
         pygame.image.load(asset_path(f"Profiles/profile_img_{i+1}.jpg")).convert_alpha(),
         (150, 150)
     )
-    for i in range(3)
+    for i in range(2)
 ]
 
 
