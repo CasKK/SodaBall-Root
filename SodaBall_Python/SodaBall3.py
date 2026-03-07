@@ -386,9 +386,12 @@ class GameController:
             
 
     def handle_goal(self, scoring_node, side):
-        self.score[scoring_node] += 1
+        if scoring_node == 1:
+            self.score[2] += 1
+        else:
+            self.score[1] += 1
 
-        if debug: print(f"awaka {self.score[scoring_node]}")
+        if debug: print(f"Goal registered in {scoring_node}'s net! Score is now {self.score[1]} : {self.score[2]}")
         # Show animation based on side added later
 
 
@@ -598,9 +601,10 @@ surface = window.get_surface()
 # Internal render surface
 # ---------------------------
 render_surface = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
-render_surface1 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT), pygame.SRCALPHA)
-render_surface2 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT), pygame.SRCALPHA)
-render_surface3 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT), pygame.SRCALPHA)
+render_surface0 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
+render_surface_text1 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT), pygame.SRCALPHA)
+render_surface_text2 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT), pygame.SRCALPHA)
+render_surface_effects = pygame.Surface((BASE_WIDTH, BASE_HEIGHT), pygame.SRCALPHA)
 
 # Fonts
 font = pygame.font.Font(asset_path("Press_Start_2P/PressStart2P-Regular.ttf"), 60)
@@ -632,6 +636,15 @@ windsock_frames = [
     for i in range(4)
 ]
 windsock_frames1 = [pygame.transform.flip(f, True, False) for f in windsock_frames]
+
+profile_pictures = [
+    pygame.transform.scale(
+        pygame.image.load(asset_path(f"Profiles/profile_img_{i+1}.jpg")).convert_alpha(),
+        (150, 150)
+    )
+    for i in range(3)
+]
+
 
 # ---------------------------
 # Wind particles
@@ -675,27 +688,38 @@ score_surface_2 = None
 clock = pygame.time.Clock()
 running = True
 
+profile_pictures_number1 = 0
+
 # ==========================================================
 # Main loop
 # ==========================================================
 while running:
     dt = clock.tick(30) / 1000.0
-
+    button_rect = pygame.Rect(10 + 920, 195, 600, 600)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 running = False
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1:  # Left mouse button
+                if button_rect.collidepoint(event.pos):
+                    print("Button clicked")
+                    if profile_pictures_number1 < 2:
+                        profile_pictures_number1 = 0
+                    else:
+                        profile_pictures_number1 += 1
 
     # ---------------------------
     # Render base scene
     # ---------------------------
-    render_surface.fill(BLACK)
+    #render_surface.fill(BLACK)
     render_surface.blit(bane_img, (0, 0))
-    render_surface1.fill((0, 0, 0, 0))
-    render_surface2.fill((0, 0, 0, 0))
-    render_surface3.fill((0, 0, 0, 0)) 
+    render_surface0.blit(bane_img, (0, 0))
+    render_surface_text1.fill((0, 0, 0, 0))
+    render_surface_text2.fill((0, 0, 0, 0))
+    render_surface_effects.fill((0, 0, 0, 0)) 
 
     render_surface.blit(wind_img,
         (int(BASE_WIDTH - BASE_WIDTH/12 - wind_img.get_width()), -20))
@@ -706,13 +730,12 @@ while running:
     money_text_1 = font.render(f"{int(controller.money[1]/20)}", True, RED)
     money_text_2 = font.render(f"{int(controller.money[2]/20)}", True, RED)
 
-    render_surface1.blit(money_text_1, (int(BASE_WIDTH/50), 15))
-    render_surface1.blit(money_text_2,(int(BASE_WIDTH - (BASE_WIDTH/50 + money_text_2.get_width())), 15))
+    render_surface_text1.blit(money_text_1, (int(BASE_WIDTH/50), 15))
+    render_surface_text1.blit(money_text_2,(int(BASE_WIDTH - (BASE_WIDTH/50 + money_text_2.get_width())), 15))
+    render_surface_text2.blit(money_text_1,(int(BASE_WIDTH - (BASE_WIDTH/50 + money_text_1.get_width())), 15))
+    render_surface_text2.blit(money_text_2, (int(BASE_WIDTH/50), 15))
 
-    render_surface2.blit(money_text_1,(int(BASE_WIDTH - (BASE_WIDTH/50 + money_text_1.get_width())), 15))
-    render_surface2.blit(money_text_2, (int(BASE_WIDTH/50), 15))
-
-    # Score caching
+    # Score
     current_score_1 = int(controller.score[1])
     current_score_2 = int(controller.score[2])
 
@@ -726,10 +749,16 @@ while running:
 
     score_height = (BASE_HEIGHT // 2) - (score_surface_1.get_height() // 2)
 
-    render_surface1.blit(score_surface_1, (BASE_WIDTH // 6, score_height))
-    render_surface1.blit(score_surface_2, (BASE_WIDTH - (BASE_WIDTH // 6 + score_surface_2.get_width()), score_height))
-    render_surface2.blit(score_surface_2, (BASE_WIDTH // 6, score_height))
-    render_surface2.blit(score_surface_1, (BASE_WIDTH - (BASE_WIDTH // 6 + score_surface_1.get_width()), score_height))
+    render_surface_text1.blit(score_surface_1, (BASE_WIDTH // 6, score_height))
+    render_surface_text1.blit(score_surface_2, (BASE_WIDTH - (BASE_WIDTH // 6 + score_surface_2.get_width()), score_height))
+    render_surface_text2.blit(score_surface_1, (BASE_WIDTH - (BASE_WIDTH // 6 + score_surface_1.get_width()), score_height))
+    render_surface_text2.blit(score_surface_2, (BASE_WIDTH // 6, score_height))
+    
+    # Profiles
+    render_surface_text1.blit(profile_pictures[profile_pictures_number1], (10, 195))
+    render_surface_text1.blit(profile_pictures[1], (BASE_WIDTH - profile_pictures[1].get_width() - 10, 195))
+    render_surface_text2.blit(profile_pictures[profile_pictures_number1], (BASE_WIDTH - profile_pictures[1].get_width() - 10, 195))
+    render_surface_text2.blit(profile_pictures[1], (10, 195))
 
     # Windsock
     air_phase = controller.airPhase
@@ -741,13 +770,13 @@ while running:
         frame_index = (pygame.time.get_ticks() // 100) % len(windsock_frames)
 
         if air_owner == 1:
-            render_surface3.blit(
+            render_surface_effects.blit(
                 windsock_frames[frame_index],
                 (BASE_WIDTH//2 - windsock_frames[0].get_width()//2,
                  BASE_HEIGHT - windsock_frames[0].get_height())
             )
         else:
-            render_surface3.blit(
+            render_surface_effects.blit(
                 windsock_frames1[frame_index],
                 (BASE_WIDTH//2 - windsock_frames1[0].get_width()//2,
                  BASE_HEIGHT - windsock_frames1[0].get_height())
@@ -758,24 +787,27 @@ while running:
     if show_air:
         for particle in wind:
             particle.update(dt)
-            particle.draw(render_surface3)
+            particle.draw(render_surface_effects)
 
+
+    # Put it all together
     # Mirror for right monitor
-    mirrored = pygame.transform.flip(render_surface, True, False)
+    #mirrored = pygame.transform.flip(render_surface, True, False)
+    #mirrored = render_surface
 
-    render_surface.blit(render_surface1, (0,0))
-    render_surface.blit(render_surface3, (0,0))
+
+    render_surface.blit(render_surface_text1, (0,0))
+    render_surface.blit(render_surface_effects, (0,0))
     # Scale base render to monitor size
     scaled_left = pygame.transform.scale(
         render_surface,
         (LEFT_WIDTH, LEFT_HEIGHT)
     )
 
-    mirrored.blit(render_surface2, (0,0))
-    mirrored_render_surface3 = pygame.transform.flip(render_surface3, True, False)
-    mirrored.blit(mirrored_render_surface3, (0,0))
+    render_surface0.blit(render_surface_text2, (0,0))
+    render_surface0.blit(pygame.transform.flip(render_surface_effects, True, False), (0,0))
     scaled_right = pygame.transform.scale(
-        mirrored,
+        render_surface0,
         (RIGHT_WIDTH, RIGHT_HEIGHT)
     )
     #empty_surface = pygame.Surface((LEFT_WIDTH, LEFT_HEIGHT))  # same height, width of leftover
