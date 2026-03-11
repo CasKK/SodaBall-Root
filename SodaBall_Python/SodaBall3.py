@@ -592,7 +592,7 @@ TOTAL_HEIGHT = LEFT_HEIGHT
 # Create one spanning borderless window
 window = Window(
     "SodaBall",
-    size=(TOTAL_WIDTH + LEFT_WIDTH, TOTAL_HEIGHT) # Extra size because SDL or X11 don't care about placement commands apparently...
+    size=(TOTAL_WIDTH, TOTAL_HEIGHT) # Extra size because SDL or X11 don't care about placement commands apparently...
 )
 window.borderless = True
 
