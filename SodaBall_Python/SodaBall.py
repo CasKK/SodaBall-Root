@@ -1,41 +1,31 @@
-import serial
-import crcmod
+import pygame
+from pygame._sdl2.video import Window
 
-crc8 = crcmod.predefined.mkCrcFun('crc-8')
+pygame.init()
 
-ser = serial.Serial('COM5', 115200, timeout=0.1)
-seen = set()  # (id, seq) pairs
+print("Displays:", pygame.display.get_desktop_sizes())
+help(Window)
+# Window on monitor 0
+win1 = Window("Left", size=(800,600), display=0)
+win1.position = (100, 100)
 
-def send_ack(arduino_id, seq):
-    body = f"A,{arduino_id},{seq},OK"
-    crc = crc8(body.encode())
-    msg = f"${body}*{crc:02X}\n"
-    ser.write(msg.encode())
+# Window on monitor 1
+win2 = Window("Right", size=(800,600), display=1)
+win2.position = (100, 100)
 
-while True:
-    line = ser.readline().decode(errors='ignore').strip()
-    if not line.startswith("$") or "*" not in line:
-        continue
+running = True
+clock = pygame.time.Clock()
 
-    body, crc_hex = line[1:].split("*")
-    if crc8(body.encode()) != int(crc_hex, 16):
-        continue
+while running:
+    for e in pygame.event.get():
+        if e.type == pygame.QUIT:
+            running = False
 
-    parts = body.split(",")
-    msg_type, arduino_id, seq = parts[0], int(parts[1]), int(parts[2])
+    win1.get_surface().fill((255,0,0))
+    win2.get_surface().fill((0,0,255))
 
-    if (arduino_id, seq) in seen:
-        send_ack(arduino_id, seq)
-        continue
+    win1.flip()
+    win2.flip()
+    clock.tick(60)
 
-    seen.add((arduino_id, seq))
-
-    if msg_type == "G":
-        side = parts[3]
-        print(f"GOAL from Arduino {arduino_id}: {side}")
-        send_ack(arduino_id, seq)
-
-    if msg_type == "B":
-        payload = parts[3]
-        print(f"Button {arduino_id}: {payload}")
-        send_ack(arduino_id, seq)
+pygame.quit()

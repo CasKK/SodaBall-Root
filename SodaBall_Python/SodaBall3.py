@@ -5,6 +5,11 @@ import time
 from collections import deque
 from collections import OrderedDict
 import threading
+import pygame
+from pathlib import Path
+import random
+from pygame._sdl2.video import Window
+import os
 
 crc8 = crcmod.predefined.mkCrcFun('crc-8')
 RETRY_INTERVAL = 0.2   # seconds
@@ -63,50 +68,56 @@ class NodeManager:
         self.nodes_by_port = {}
         self.discovery_complete = False
 
+        self.scan_interval = 0.5      # seconds
+        self.last_scan_time = 0
+    
     def update(self):
-        # If already complete, only monitor removal
+        now = time.time()
+
+        # Always monitor removals quickly
+        self._check_removals()
+
+        # Only scan occasionally
+        if now - self.last_scan_time < self.scan_interval:
+            return
+
+        self.last_scan_time = now
+
+        # If already complete, don't probe
         if self.discovery_complete:
-            self._check_removals()
+            return
+
+        missing = self.required_ids - set(self.controller.nodes.keys())
+        if not missing:
+            print("[DISCOVER] All required nodes found.")
+            self.discovery_complete = True
             return
 
         current_ports = {p.device for p in serial.tools.list_ports.comports()}
 
-        # Create probes only if still missing nodes
-        missing = self.required_ids - set(self.controller.nodes.keys())
-
-        if not missing:
-            print("[DISCOVER] All required nodes found. Stopping search.")
-            self.discovery_complete = True
-            return
-
-        # Probe new ports
         for port in current_ports:
-            if port not in self.probes and port not in self.nodes_by_port:
-                try:
-                    print(f"[DISCOVER] probing {port}")
-                    self.probes[port] = PortProbe(port)
-                except:
-                    pass
+            if port in self.probes or port in self.nodes_by_port:
+                continue
+
+            # Only probe USB devices (important!)
+            if "ttyUSB" not in port and "ttyACM" not in port:
+                continue
+
+            try:
+                print(f"[DISCOVER] probing {port}")
+                self.probes[port] = PortProbe(port)
+            except:
+                pass
 
         # Poll probes
         for port, probe in list(self.probes.items()):
+            node_id = probe.poll()
 
             if probe.dead:
                 del self.probes[port]
                 continue
 
-            node_id = probe.poll()
             if node_id is None:
-                continue
-
-            # Ignore nodes we don't care about
-            if node_id not in self.required_ids:
-                print(f"[DISCOVER] Ignoring unexpected node {node_id}")
-                continue
-
-            # Ignore duplicates
-            if node_id in self.controller.nodes:
-                print(f"[DISCOVER] Duplicate node ID {node_id} ignored")
                 continue
 
             print(f"[DISCOVER] Node {node_id} found on {port}")
@@ -117,7 +128,7 @@ class NodeManager:
             node = ArduinoNode(port, node_id, self.controller.handle_event)
             self.controller.register_node(node)
             self.nodes_by_port[port] = node
-    
+
     def _check_removals(self):
         current_ports = {p.device for p in serial.tools.list_ports.comports()}
 
@@ -313,15 +324,18 @@ class ArduinoNode:
 
 class GameController:
     def __init__(self):
-        #self.score = {1: 0, 2: 0}
+        self.score = {1: 0, 2: 0}
         self.money = {1: 0, 2: 0}
         self.nodes = {}
 
         self.airOwner = None  # node_id that owns the current air sequence
         self.airDuration = 10.0        # total air time
         self.smokeStartDelay = 1.0   # seconds after air starts
-        self.smokeEndEarly = 5.0     # seconds before air ends
+        self.smokeDuration = 5.0     # seconds before air ends
         self.nosmokeDuration = 3.0
+        self.airCost = 20
+        self.bigCoin = 20
+        self.smallCoin = 10
         self.airStart = None
         self.airActive = False
         self.airPhase = "IDLE"
@@ -345,15 +359,15 @@ class GameController:
 
 
     def handle_button(self, node_id, button):
-        if button == "Air" and self.airPhase == "IDLE":
+        if button == "Air" and self.airPhase == "IDLE" and self.money[node_id] >= self.airCost:
             self.airOwner = node_id
             self.airPhase = "AIR"
             self.airStart = time.time()
-
+            self.money[node_id] -= self.airCost
             node = self.nodes.get(node_id)
             if node and node.is_ready():
                 node.send_command("R", "air")
-
+                node.send_command("D", self.money[node_id])
             if debug: print(f"R, air → node {node_id}")
 
         elif button == "coinBig":
@@ -361,19 +375,23 @@ class GameController:
             if n and n.is_ready():
                 self.money[node_id] += 20
                 n.send_command("D", self.money[node_id])
-                if debug: print("D, +20")
+                if debug: print("D, +bigCoin")
 
         elif button == "coinSmall":
             n = self.nodes.get(node_id)
             if n and n.is_ready():
                 self.money[node_id] += 10
                 n.send_command("D", self.money[node_id])
-                if debug: print("D, +10")
+                if debug: print("D, +smallCoin")
             
 
     def handle_goal(self, scoring_node, side):
-        opponent = 2 if scoring_node == 1 else 1
-        if debug: print(f"awaka {opponent}")
+        if scoring_node == 1:
+            self.score[2] += 1
+        else:
+            self.score[1] += 1
+
+        if debug: print(f"Goal registered in {scoring_node}'s net! Score is now {self.score[1]} : {self.score[2]}")
         # Show animation based on side added later
 
 
@@ -392,7 +410,7 @@ class GameController:
             print(f"R, smoke → node {self.airOwner}")
 
         # SMOKE → NOSMOKE
-        elif self.airPhase == "SMOKE" and elapsed >= (self.airDuration - self.smokeEndEarly):
+        elif self.airPhase == "SMOKE" and elapsed >= (self.airDuration - self.smokeDuration):
             node = self.nodes.get(self.airOwner)
             if node and node.is_ready():
                 node.send_command("R", "nosmoke")
@@ -507,7 +525,7 @@ class GameController:
             print(f"[MANUAL] money[{node_id}] += {delta} → {self.money[node_id]}")
 
 
-
+#os.environ["SDL_VIDEO_WINDOW_POS"] = "0,0"
 controller = GameController()
 manager = NodeManager(controller, required_ids={1, 2})
 
@@ -519,18 +537,287 @@ def console_loop(controller):
         except EOFError:
             break
 
-threading.Thread(
-    target=console_loop,
-    args=(controller,),
-    daemon=True
-).start()
+threading.Thread(target=console_loop, args=(controller,), daemon=True).start()
 
-while True:
-    manager.update()
+def game_loop():
+    while True:
+        manager.update()
+        for node in list(manager.nodes_by_port.values()):
+            node.poll()
+        controller.checkStates()
+        time.sleep(0.01)
 
-    for node in list(manager.nodes_by_port.values()):
-        node.poll()
+threading.Thread(target=game_loop, daemon=True).start()
 
-    controller.checkStates()
-    time.sleep(0.01)
 
+###### File path stuff ######
+BASE_DIR = Path(__file__).resolve().parent
+def asset_path(*parts):
+    return BASE_DIR.joinpath("Figures_and_Fonts", *parts)
+
+# ---------------------------
+# Base resolution
+# ---------------------------
+BASE_WIDTH = 960
+BASE_HEIGHT = 540
+
+
+# Wind configuration
+WIND_COUNT = 200
+WIND_SPEED_MIN = 600
+WIND_SPEED_MAX = 1000
+WIND_WIDTH = 20
+WIND_HEIGHT = 4
+AIR_DIRECTION = "right"
+show_air = False
+
+pygame.init()
+
+desktop_sizes = pygame.display.get_desktop_sizes()
+print("Desktop sizes:", desktop_sizes)
+
+if len(desktop_sizes) < 2:
+    raise RuntimeError("Two monitors required for dual display mode.")
+
+# Calculate combined virtual width
+LEFT_WIDTH, LEFT_HEIGHT = desktop_sizes[0]
+RIGHT_WIDTH, RIGHT_HEIGHT = desktop_sizes[1]
+
+if LEFT_HEIGHT != RIGHT_HEIGHT:
+    raise RuntimeError("Monitor heights must match for spanning mode.")
+
+TOTAL_WIDTH = LEFT_WIDTH + RIGHT_WIDTH
+TOTAL_HEIGHT = LEFT_HEIGHT
+
+# Create one spanning borderless window
+window = Window(
+    "SodaBall",
+    size=(TOTAL_WIDTH + LEFT_WIDTH, TOTAL_HEIGHT) # Extra size because SDL or X11 don't care about placement commands apparently...
+)
+window.borderless = True
+
+surface = window.get_surface()
+# ---------------------------
+# Internal render surface
+# ---------------------------
+render_surface = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
+render_surface0 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
+render_surface_text1 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT), pygame.SRCALPHA)
+render_surface_text2 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT), pygame.SRCALPHA)
+render_surface_effects = pygame.Surface((BASE_WIDTH, BASE_HEIGHT), pygame.SRCALPHA)
+
+# Fonts
+font = pygame.font.Font(asset_path("Press_Start_2P/PressStart2P-Regular.ttf"), 60)
+font1 = pygame.font.Font(asset_path("digital_7/digital-7.ttf"), 500)
+
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+RED = (220, 0, 0)
+
+# ---------------------------
+# Assets
+# ---------------------------
+wind_img = pygame.transform.scale(
+    pygame.image.load(asset_path("Wind.png")).convert_alpha(),
+    (128, 128)
+)
+wind_img1 = pygame.transform.flip(wind_img, True, False)
+
+bane_img = pygame.transform.scale(
+    pygame.image.load(asset_path("Bane.png")).convert(),
+    (BASE_WIDTH, BASE_HEIGHT)
+)
+
+windsock_frames = [
+    pygame.transform.scale(
+        pygame.image.load(asset_path(f"pixilart_windsock/windsock_{i+1}.png")).convert_alpha(),
+        (248, 204)
+    )
+    for i in range(4)
+]
+windsock_frames1 = [pygame.transform.flip(f, True, False) for f in windsock_frames]
+
+profile_pictures = [
+    pygame.transform.scale(
+        pygame.image.load(asset_path(f"Profiles/profile_img_{i+1}.jpg")).convert_alpha(),
+        (150, 150)
+    )
+    for i in range(2)
+]
+
+
+# ---------------------------
+# Wind particles
+# ---------------------------
+class WindEffect:
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.y = random.randint(0, BASE_HEIGHT)
+        self.speed = random.uniform(WIND_SPEED_MIN, WIND_SPEED_MAX)
+        if AIR_DIRECTION == "right":
+            self.x = random.randint(-BASE_WIDTH, 0)
+        else:
+            self.x = random.randint(BASE_WIDTH, BASE_WIDTH * 2)
+
+    def update(self, dt):
+        if AIR_DIRECTION == "right":
+            self.x += self.speed * dt
+            if self.x > BASE_WIDTH:
+                self.reset()
+        else:
+            self.x -= self.speed * dt
+            if self.x < -WIND_WIDTH:
+                self.reset()
+
+    def draw(self, surface):
+        pygame.draw.rect(surface, (200, 200, 200),
+                         (int(self.x), int(self.y), WIND_WIDTH, WIND_HEIGHT))
+
+wind = [WindEffect() for _ in range(WIND_COUNT)]
+
+# ---------------------------
+# Cached score rendering
+# ---------------------------
+last_score_1 = None
+last_score_2 = None
+score_surface_1 = None
+score_surface_2 = None
+
+clock = pygame.time.Clock()
+running = True
+
+profile_pictures_number1 = 0
+
+# ==========================================================
+# Main loop
+# ==========================================================
+while running:
+    dt = clock.tick(30) / 1000.0
+    button_rect = pygame.Rect(10 + 920, 195, 600, 600)
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                running = False
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1:  # Left mouse button
+                if button_rect.collidepoint(event.pos):
+                    print("Button clicked")
+                    if profile_pictures_number1 < 2:
+                        profile_pictures_number1 = 0
+                    else:
+                        profile_pictures_number1 += 1
+
+    # ---------------------------
+    # Render base scene
+    # ---------------------------
+    #render_surface.fill(BLACK)
+    render_surface.blit(bane_img, (0, 0))
+    render_surface0.blit(bane_img, (0, 0))
+    render_surface_text1.fill((0, 0, 0, 0))
+    render_surface_text2.fill((0, 0, 0, 0))
+    render_surface_effects.fill((0, 0, 0, 0)) 
+
+    render_surface.blit(wind_img,
+        (int(BASE_WIDTH - BASE_WIDTH/12 - wind_img.get_width()), -20))
+    render_surface.blit(wind_img1,
+        (int(BASE_WIDTH/12), -20))
+
+    # Money
+    money_text_1 = font.render(f"{int(controller.money[1]/20)}", True, RED)
+    money_text_2 = font.render(f"{int(controller.money[2]/20)}", True, RED)
+
+    render_surface_text1.blit(money_text_1, (int(BASE_WIDTH/50), 15))
+    render_surface_text1.blit(money_text_2,(int(BASE_WIDTH - (BASE_WIDTH/50 + money_text_2.get_width())), 15))
+    render_surface_text2.blit(money_text_1,(int(BASE_WIDTH - (BASE_WIDTH/50 + money_text_1.get_width())), 15))
+    render_surface_text2.blit(money_text_2, (int(BASE_WIDTH/50), 15))
+
+    # Score
+    current_score_1 = int(controller.score[1])
+    current_score_2 = int(controller.score[2])
+
+    if current_score_1 != last_score_1:
+        score_surface_1 = font1.render(str(current_score_1), True, RED)
+        last_score_1 = current_score_1
+
+    if current_score_2 != last_score_2:
+        score_surface_2 = font1.render(str(current_score_2), True, RED)
+        last_score_2 = current_score_2
+
+    score_height = (BASE_HEIGHT // 2) - (score_surface_1.get_height() // 2)
+
+    render_surface_text1.blit(score_surface_1, (BASE_WIDTH // 6, score_height))
+    render_surface_text1.blit(score_surface_2, (BASE_WIDTH - (BASE_WIDTH // 6 + score_surface_2.get_width()), score_height))
+    render_surface_text2.blit(score_surface_1, (BASE_WIDTH - (BASE_WIDTH // 6 + score_surface_1.get_width()), score_height))
+    render_surface_text2.blit(score_surface_2, (BASE_WIDTH // 6, score_height))
+    
+    # Profiles
+    render_surface_text1.blit(profile_pictures[profile_pictures_number1], (10, 195))
+    render_surface_text1.blit(profile_pictures[1], (BASE_WIDTH - profile_pictures[1].get_width() - 10, 195))
+    render_surface_text2.blit(profile_pictures[profile_pictures_number1], (BASE_WIDTH - profile_pictures[1].get_width() - 10, 195))
+    render_surface_text2.blit(profile_pictures[1], (10, 195))
+
+    # Windsock
+    air_phase = controller.airPhase
+    air_owner = controller.airOwner
+
+    if air_phase != "IDLE":
+        AIR_DIRECTION = "right" if air_owner == 1 else "left"
+        show_air = True
+        frame_index = (pygame.time.get_ticks() // 100) % len(windsock_frames)
+
+        if air_owner == 1:
+            render_surface_effects.blit(
+                windsock_frames[frame_index],
+                (BASE_WIDTH//2 - windsock_frames[0].get_width()//2,
+                 BASE_HEIGHT - windsock_frames[0].get_height())
+            )
+        else:
+            render_surface_effects.blit(
+                windsock_frames1[frame_index],
+                (BASE_WIDTH//2 - windsock_frames1[0].get_width()//2,
+                 BASE_HEIGHT - windsock_frames1[0].get_height())
+            )
+    else:
+        show_air = False
+
+    if show_air:
+        for particle in wind:
+            particle.update(dt)
+            particle.draw(render_surface_effects)
+
+
+    # Put it all together
+    # Mirror for right monitor
+    #mirrored = pygame.transform.flip(render_surface, True, False)
+    #mirrored = render_surface
+
+
+    render_surface.blit(render_surface_text1, (0,0))
+    render_surface.blit(render_surface_effects, (0,0))
+    # Scale base render to monitor size
+    scaled_left = pygame.transform.scale(
+        render_surface,
+        (LEFT_WIDTH, LEFT_HEIGHT)
+    )
+
+    render_surface0.blit(render_surface_text2, (0,0))
+    render_surface0.blit(pygame.transform.flip(render_surface_effects, True, False), (0,0))
+    scaled_right = pygame.transform.scale(
+        render_surface0,
+        (RIGHT_WIDTH, RIGHT_HEIGHT)
+    )
+    #empty_surface = pygame.Surface((LEFT_WIDTH, LEFT_HEIGHT))  # same height, width of leftover
+    #empty_surface.fill((0, 0, 0))  # black, or whatever background color you want
+
+    # Draw both halves into spanning window
+    surface.blit(scaled_left, (LEFT_WIDTH, 0))
+    surface.blit(scaled_right, (LEFT_WIDTH+LEFT_WIDTH, 0))
+    #surface.blit(empty_surface, (LEFT_WIDTH, 0))
+
+    window.flip()
+
+pygame.quit()
