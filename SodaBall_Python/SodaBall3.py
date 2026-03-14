@@ -586,7 +586,7 @@ RIGHT_WIDTH, RIGHT_HEIGHT = desktop_sizes[1]
 if LEFT_HEIGHT != RIGHT_HEIGHT:
     raise RuntimeError("Monitor heights must match for spanning mode.")
 
-TOTAL_WIDTH = LEFT_WIDTH + RIGHT_HEIGHT
+TOTAL_WIDTH = LEFT_WIDTH + RIGHT_WIDTH
 TOTAL_HEIGHT = LEFT_HEIGHT
 
 # Create one spanning borderless window
@@ -822,8 +822,8 @@ while running:
     )
 
     # Draw both halves into spanning window
-    surface.blit(scaled_left, (LEFT_WIDTH, 0))
-    surface.blit(scaled_right, (LEFT_WIDTH+LEFT_WIDTH, 0))
+    surface.blit(scaled_left, (0, 0))
+    surface.blit(scaled_right, (LEFT_WIDTH, 0))
     print(time.perf_counter() - start)
     window.flip()
 
