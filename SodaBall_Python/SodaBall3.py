@@ -586,7 +586,7 @@ RIGHT_WIDTH, RIGHT_HEIGHT = desktop_sizes[1]
 if LEFT_HEIGHT != RIGHT_HEIGHT:
     raise RuntimeError("Monitor heights must match for spanning mode.")
 
-TOTAL_WIDTH = LEFT_WIDTH + RIGHT_WIDTH
+TOTAL_WIDTH = LEFT_WIDTH + LEFT_WIDTH
 TOTAL_HEIGHT = LEFT_HEIGHT
 
 # Create one spanning borderless window
@@ -602,8 +602,6 @@ surface = window.get_surface()
 # ---------------------------
 render_surface = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
 render_surface0 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
-#render_surface_text1 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT), pygame.SRCALPHA)
-#render_surface_text2 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT), pygame.SRCALPHA)
 render_surface_effects = pygame.Surface((BASE_WIDTH, BASE_HEIGHT), pygame.SRCALPHA)
 
 # Fonts
@@ -723,6 +721,7 @@ while running:
     # ---------------------------
     if reset:
         if debug: print("Base blit")
+        background_surface = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
         background_surface.blit(bane_img, (0, 0))
         background_surface.blit(wind_img,
             (int(BASE_WIDTH - BASE_WIDTH/12 - wind_img.get_width()), -20))
@@ -785,8 +784,8 @@ while running:
         show_air = True
         frame_index = (pygame.time.get_ticks() // 100) % len(windsock_frames)
 
-        if air_owner == 1:
-            render_surface_effects.blit(
+        if air_owner == 1: ##################### Might be able to blit this onto background surface.
+            render_surface_effects.blit( ########## And only at frame-interval to avoid alpha blit every frame (as it does now). 
                 windsock_frames[frame_index],
                 (BASE_WIDTH//2 - windsock_frames[0].get_width()//2,
                  BASE_HEIGHT - windsock_frames[0].get_height())
