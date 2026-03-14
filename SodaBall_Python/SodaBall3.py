@@ -602,8 +602,8 @@ surface = window.get_surface()
 # ---------------------------
 render_surface = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
 render_surface0 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
-render_surface_text1 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT), pygame.SRCALPHA)
-render_surface_text2 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT), pygame.SRCALPHA)
+#render_surface_text1 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT), pygame.SRCALPHA)
+#render_surface_text2 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT), pygame.SRCALPHA)
 render_surface_effects = pygame.Surface((BASE_WIDTH, BASE_HEIGHT), pygame.SRCALPHA)
 
 # Fonts
@@ -684,11 +684,18 @@ last_score_1 = None
 last_score_2 = None
 score_surface_1 = None
 score_surface_2 = None
+last_money_1 = None
+last_money_2 = None
+money_text_1 = None
+money_text_2 = None
+background_surface = None
 
 clock = pygame.time.Clock()
 running = True
 
 profile_pictures_number1 = 0
+
+reset = True
 
 # ==========================================================
 # Main loop
@@ -714,26 +721,35 @@ while running:
     # ---------------------------
     # Render base scene
     # ---------------------------
-    #render_surface.fill(BLACK)
-    render_surface.blit(bane_img, (0, 0))
-    render_surface0.blit(bane_img, (0, 0))
-    render_surface_text1.fill((0, 0, 0, 0))
-    render_surface_text2.fill((0, 0, 0, 0))
+    if reset:
+        if debug: print("Base blit")
+        background_surface.blit(bane_img, (0, 0))
+        background_surface.blit(wind_img,
+            (int(BASE_WIDTH - BASE_WIDTH/12 - wind_img.get_width()), -20))
+        background_surface.blit(wind_img1,
+            (int(BASE_WIDTH/12), -20))
+        reset = False
+
+    render_surface.blit(background_surface, (0, 0))
+    render_surface0.blit(background_surface, (0, 0))
     render_surface_effects.fill((0, 0, 0, 0)) 
 
-    render_surface.blit(wind_img,
-        (int(BASE_WIDTH - BASE_WIDTH/12 - wind_img.get_width()), -20))
-    render_surface.blit(wind_img1,
-        (int(BASE_WIDTH/12), -20))
-
     # Money
-    money_text_1 = font.render(f"{int(controller.money[1]/20)}", True, RED)
-    money_text_2 = font.render(f"{int(controller.money[2]/20)}", True, RED)
+    current_money_1 = int(controller.money[1])
+    current_money_2 = int(controller.money[2])
+    
+    if current_money_1 != last_money_1:
+        money_text_1 = font.render(f"{int(controller.money[1]/20)}", True, RED)
+        last_money_1 = current_money_1
+    
+    if current_money_2 != last_money_2:
+        money_text_2 = font.render(f"{int(controller.money[2]/20)}", True, RED)
+        last_money_2 = current_money_2
 
-    render_surface_text1.blit(money_text_1, (int(BASE_WIDTH/50), 15))
-    render_surface_text1.blit(money_text_2,(int(BASE_WIDTH - (BASE_WIDTH/50 + money_text_2.get_width())), 15))
-    render_surface_text2.blit(money_text_1,(int(BASE_WIDTH - (BASE_WIDTH/50 + money_text_1.get_width())), 15))
-    render_surface_text2.blit(money_text_2, (int(BASE_WIDTH/50), 15))
+    render_surface.blit(money_text_1, (int(BASE_WIDTH/50), 15))
+    render_surface.blit(money_text_2,(int(BASE_WIDTH - (BASE_WIDTH/50 + money_text_2.get_width())), 15))
+    render_surface0.blit(money_text_1,(int(BASE_WIDTH - (BASE_WIDTH/50 + money_text_1.get_width())), 15))
+    render_surface0.blit(money_text_2, (int(BASE_WIDTH/50), 15))
 
     # Score
     current_score_1 = int(controller.score[1])
@@ -749,16 +765,16 @@ while running:
 
     score_height = (BASE_HEIGHT // 2) - (score_surface_1.get_height() // 2)
 
-    render_surface_text1.blit(score_surface_1, (BASE_WIDTH // 6, score_height))
-    render_surface_text1.blit(score_surface_2, (BASE_WIDTH - (BASE_WIDTH // 6 + score_surface_2.get_width()), score_height))
-    render_surface_text2.blit(score_surface_1, (BASE_WIDTH - (BASE_WIDTH // 6 + score_surface_1.get_width()), score_height))
-    render_surface_text2.blit(score_surface_2, (BASE_WIDTH // 6, score_height))
+    render_surface.blit(score_surface_1, (BASE_WIDTH // 6, score_height))
+    render_surface.blit(score_surface_2, (BASE_WIDTH - (BASE_WIDTH // 6 + score_surface_2.get_width()), score_height))
+    render_surface0.blit(score_surface_1, (BASE_WIDTH - (BASE_WIDTH // 6 + score_surface_1.get_width()), score_height))
+    render_surface0.blit(score_surface_2, (BASE_WIDTH // 6, score_height))
     
     # Profiles
-    render_surface_text1.blit(profile_pictures[profile_pictures_number1], (10, 195))
-    render_surface_text1.blit(profile_pictures[1], (BASE_WIDTH - profile_pictures[1].get_width() - 10, 195))
-    render_surface_text2.blit(profile_pictures[profile_pictures_number1], (BASE_WIDTH - profile_pictures[1].get_width() - 10, 195))
-    render_surface_text2.blit(profile_pictures[1], (10, 195))
+    render_surface.blit(profile_pictures[profile_pictures_number1], (10, 195))
+    render_surface.blit(profile_pictures[1], (BASE_WIDTH - profile_pictures[1].get_width() - 10, 195))
+    render_surface0.blit(profile_pictures[profile_pictures_number1], (BASE_WIDTH - profile_pictures[1].get_width() - 10, 195))
+    render_surface0.blit(profile_pictures[1], (10, 195))
 
     # Windsock
     air_phase = controller.airPhase
@@ -791,12 +807,7 @@ while running:
 
 
     # Put it all together
-    # Mirror for right monitor
-    #mirrored = pygame.transform.flip(render_surface, True, False)
-    #mirrored = render_surface
 
-
-    render_surface.blit(render_surface_text1, (0,0))
     render_surface.blit(render_surface_effects, (0,0))
     # Scale base render to monitor size
     scaled_left = pygame.transform.scale(
@@ -804,19 +815,15 @@ while running:
         (LEFT_WIDTH, LEFT_HEIGHT)
     )
 
-    render_surface0.blit(render_surface_text2, (0,0))
     render_surface0.blit(pygame.transform.flip(render_surface_effects, True, False), (0,0))
     scaled_right = pygame.transform.scale(
         render_surface0,
         (RIGHT_WIDTH, RIGHT_HEIGHT)
     )
-    #empty_surface = pygame.Surface((LEFT_WIDTH, LEFT_HEIGHT))  # same height, width of leftover
-    #empty_surface.fill((0, 0, 0))  # black, or whatever background color you want
 
     # Draw both halves into spanning window
     surface.blit(scaled_left, (LEFT_WIDTH, 0))
     surface.blit(scaled_right, (LEFT_WIDTH+LEFT_WIDTH, 0))
-    #surface.blit(empty_surface, (LEFT_WIDTH, 0))
 
     window.flip()
 
