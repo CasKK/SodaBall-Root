@@ -586,7 +586,7 @@ RIGHT_WIDTH, RIGHT_HEIGHT = desktop_sizes[1]
 if LEFT_HEIGHT != RIGHT_HEIGHT:
     raise RuntimeError("Monitor heights must match for spanning mode.")
 
-TOTAL_WIDTH = LEFT_WIDTH + LEFT_WIDTH
+TOTAL_WIDTH = LEFT_WIDTH + RIGHT_HEIGHT
 TOTAL_HEIGHT = LEFT_HEIGHT
 
 # Create one spanning borderless window
