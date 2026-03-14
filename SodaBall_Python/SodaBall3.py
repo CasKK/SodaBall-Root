@@ -700,6 +700,7 @@ reset = True
 # ==========================================================
 while running:
     dt = clock.tick(30) / 1000.0
+    start = time.perf_counter()
     button_rect = pygame.Rect(10 + 920, 195, 600, 600)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -823,7 +824,7 @@ while running:
     # Draw both halves into spanning window
     surface.blit(scaled_left, (LEFT_WIDTH, 0))
     surface.blit(scaled_right, (LEFT_WIDTH+LEFT_WIDTH, 0))
-
+    print(time.perf_counter() - start)
     window.flip()
 
 pygame.quit()
