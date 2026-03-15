@@ -731,6 +731,8 @@ while running:
     if reset:
         if debug: print("Base blit")
         background_surface = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
+        background_surface1 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
+        background_surface2 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
         background_surface.blit(bane_img, (0, 0))
         background_surface.blit(wind_img,
             (int(BASE_WIDTH - BASE_WIDTH/12 - wind_img.get_width()), -20))
