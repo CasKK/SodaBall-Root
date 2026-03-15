@@ -681,7 +681,7 @@ class WindEffect:
                          (int(self.x), int(self.y), WIND_WIDTH, WIND_HEIGHT))
 
 wind  = [WindEffect() for _ in range(WIND_COUNT)]
-wind0 = [WindEffect() for _ in range(WIND_COUNT)]
+wind0 = [WindEffect(True) for _ in range(WIND_COUNT)]
 # ---------------------------
 # Cached score rendering
 # ---------------------------
