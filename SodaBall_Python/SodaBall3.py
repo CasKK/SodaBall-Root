@@ -820,7 +820,7 @@ while running:
             particle.update(dt)
             particle.draw(render_surface)
         for particle in wind0:
-            particle.update(-dt)
+            particle.update(dt)
             particle.draw(render_surface0)
 
 
