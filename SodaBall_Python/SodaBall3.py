@@ -525,7 +525,6 @@ class GameController:
             print(f"[MANUAL] money[{node_id}] += {delta} → {self.money[node_id]}")
 
 
-#os.environ["SDL_VIDEO_WINDOW_POS"] = "0,0"
 controller = GameController()
 manager = NodeManager(controller, required_ids={1, 2})
 
@@ -549,7 +548,6 @@ def game_loop():
 
 threading.Thread(target=game_loop, daemon=True).start()
 
-
 ###### File path stuff ######
 BASE_DIR = Path(__file__).resolve().parent
 def asset_path(*parts):
@@ -560,7 +558,6 @@ def asset_path(*parts):
 # ---------------------------
 BASE_WIDTH = 960
 BASE_HEIGHT = 540
-
 
 # Wind configuration
 WIND_COUNT = 200
@@ -592,17 +589,16 @@ TOTAL_HEIGHT = LEFT_HEIGHT
 # Create one spanning borderless window
 window = Window(
     "SodaBall",
-    size=(TOTAL_WIDTH, TOTAL_HEIGHT) # Extra size because SDL or X11 don't care about placement commands apparently...
+    size=(TOTAL_WIDTH, TOTAL_HEIGHT)
 )
 window.borderless = True
-
 surface = window.get_surface()
+
 # ---------------------------
 # Internal render surface
 # ---------------------------
 render_surface = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
 render_surface0 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
-#render_surface_effects = pygame.Surface((BASE_WIDTH, BASE_HEIGHT), pygame.SRCALPHA)
 
 # Fonts
 font = pygame.font.Font(asset_path("Press_Start_2P/PressStart2P-Regular.ttf"), 60)
@@ -643,7 +639,6 @@ profile_pictures = [
     for i in range(2)
 ]
 
-
 # ---------------------------
 # Wind particles
 # ---------------------------
@@ -683,7 +678,7 @@ class WindEffect:
 wind  = [WindEffect() for _ in range(WIND_COUNT)]
 wind0 = [WindEffect(True) for _ in range(WIND_COUNT)]
 # ---------------------------
-# Cached score rendering
+# Cached score rendering and more
 # ---------------------------
 last_score_1 = None
 last_score_2 = None
@@ -694,13 +689,19 @@ last_money_2 = None
 money_text_1 = None
 money_text_2 = None
 background_surface = None
+background_surface1 = None
+background_surface2 = None
 
 clock = pygame.time.Clock()
 running = True
 
 profile_pictures_number1 = 0
 
+last_windsock_frame_index = -1
+
 reset = True
+
+button_rect = pygame.Rect(10 + 920, 195, 600, 600)
 
 # ==========================================================
 # Main loop
@@ -708,8 +709,7 @@ reset = True
 while running:
     dt = clock.tick(30) / 1000.0
     start = time.perf_counter()
-    button_rect = pygame.Rect(10 + 920, 195, 600, 600)
-    for event in pygame.event.get():
+    for event in pygame.event.get(): ######## Input logic
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.KEYDOWN:
@@ -719,10 +719,11 @@ while running:
             if event.button == 1:  # Left mouse button
                 if button_rect.collidepoint(event.pos):
                     print("Button clicked")
-                    if profile_pictures_number1 < 2:
+                    if profile_pictures_number1 <= 2:
                         profile_pictures_number1 = 0
                     else:
                         profile_pictures_number1 += 1
+                    reset = True
 
     # ---------------------------
     # Render base scene
@@ -735,11 +736,19 @@ while running:
             (int(BASE_WIDTH - BASE_WIDTH/12 - wind_img.get_width()), -20))
         background_surface.blit(wind_img1,
             (int(BASE_WIDTH/12), -20))
+        background_surface1.blit(background_surface, (0, 0))
+        background_surface2.blit(background_surface, (0, 0))
+
+        # Profiles
+        background_surface1.blit(profile_pictures[profile_pictures_number1], (10, 195))
+        background_surface1.blit(profile_pictures[1], (BASE_WIDTH - profile_pictures[1].get_width() - 10, 195))
+        background_surface2.blit(profile_pictures[profile_pictures_number1], (BASE_WIDTH - profile_pictures[1].get_width() - 10, 195))
+        background_surface2.blit(profile_pictures[1], (10, 195))
+
         reset = False
 
-    render_surface.blit(background_surface, (0, 0))
-    render_surface0.blit(background_surface, (0, 0))
-    #render_surface_effects.fill((0, 0, 0, 0)) 
+    render_surface.blit(background_surface1, (0, 0))
+    render_surface0.blit(background_surface2, (0, 0))
 
     # Money
     current_money_1 = int(controller.money[1])
@@ -777,11 +786,7 @@ while running:
     render_surface0.blit(score_surface_1, (BASE_WIDTH - (BASE_WIDTH // 6 + score_surface_1.get_width()), score_height))
     render_surface0.blit(score_surface_2, (BASE_WIDTH // 6, score_height))
     
-    # Profiles
-    render_surface.blit(profile_pictures[profile_pictures_number1], (10, 195))
-    render_surface.blit(profile_pictures[1], (BASE_WIDTH - profile_pictures[1].get_width() - 10, 195))
-    render_surface0.blit(profile_pictures[profile_pictures_number1], (BASE_WIDTH - profile_pictures[1].get_width() - 10, 195))
-    render_surface0.blit(profile_pictures[1], (10, 195))
+    
 
     # Windsock
     air_phase = controller.airPhase
@@ -791,29 +796,31 @@ while running:
         AIR_DIRECTION = "right" if air_owner == 1 else "left"
         show_air = True
         frame_index = (pygame.time.get_ticks() // 100) % len(windsock_frames)
-
-        if air_owner == 1:
-            render_surface.blit( ########## And only at frame-interval to avoid alpha blit every frame (as it does now). 
-                windsock_frames[frame_index],
-                (BASE_WIDTH//2 - windsock_frames[0].get_width()//2,
-                 BASE_HEIGHT - windsock_frames[0].get_height())
-            )
-            render_surface0.blit(
-                windsock_frames1[frame_index],
-                (BASE_WIDTH//2 - windsock_frames1[0].get_width()//2,
-                 BASE_HEIGHT - windsock_frames1[0].get_height())
-            )
-        else:
-            render_surface0.blit(
-                windsock_frames[frame_index],
-                (BASE_WIDTH//2 - windsock_frames[0].get_width()//2,
-                 BASE_HEIGHT - windsock_frames[0].get_height())
-            )
-            render_surface.blit(
-                windsock_frames1[frame_index],
-                (BASE_WIDTH//2 - windsock_frames1[0].get_width()//2,
-                 BASE_HEIGHT - windsock_frames1[0].get_height())
-            )
+        if frame_index != last_windsock_frame_index:
+            reset = True
+            if air_owner == 1:
+                background_surface1.blit(
+                    windsock_frames[frame_index],
+                    (BASE_WIDTH//2 - windsock_frames[0].get_width()//2,
+                    BASE_HEIGHT - windsock_frames[0].get_height())
+                )
+                background_surface2.blit(
+                    windsock_frames1[frame_index],
+                    (BASE_WIDTH//2 - windsock_frames1[0].get_width()//2,
+                    BASE_HEIGHT - windsock_frames1[0].get_height())
+                )
+            else:
+                background_surface2.blit(
+                    windsock_frames[frame_index],
+                    (BASE_WIDTH//2 - windsock_frames[0].get_width()//2,
+                    BASE_HEIGHT - windsock_frames[0].get_height())
+                )
+                background_surface1.blit(
+                    windsock_frames1[frame_index],
+                    (BASE_WIDTH//2 - windsock_frames1[0].get_width()//2,
+                    BASE_HEIGHT - windsock_frames1[0].get_height())
+                )
+        last_windsock_frame_index = frame_index
     else:
         show_air = False
 
@@ -825,21 +832,9 @@ while running:
             particle.update(dt)
             particle.draw(render_surface0)
 
-
-    # Put it all together
-
-    #render_surface.blit(render_surface_effects, (0,0))
     # Scale base render to monitor size
-    scaled_left = pygame.transform.scale(
-        render_surface,
-        (LEFT_WIDTH, LEFT_HEIGHT)
-    )
-
-    #render_surface0.blit(pygame.transform.flip(render_surface_effects, True, False), (0,0))
-    scaled_right = pygame.transform.scale(
-        render_surface0,
-        (RIGHT_WIDTH, RIGHT_HEIGHT)
-    )
+    scaled_left = pygame.transform.scale(render_surface,(LEFT_WIDTH, LEFT_HEIGHT))
+    scaled_right = pygame.transform.scale(render_surface0,(RIGHT_WIDTH, RIGHT_HEIGHT))
 
     # Draw both halves into spanning window
     surface.blit(scaled_left, (0, 0))
