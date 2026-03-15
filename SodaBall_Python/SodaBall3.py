@@ -648,19 +648,20 @@ profile_pictures = [
 # Wind particles
 # ---------------------------
 class WindEffect:
-    def __init__(self):
+    def __init__(self, direction="right"):
+        self.direction = direction
         self.reset()
 
     def reset(self):
         self.y = random.randint(0, BASE_HEIGHT)
         self.speed = random.uniform(WIND_SPEED_MIN, WIND_SPEED_MAX)
-        if AIR_DIRECTION == "right":
+        if self.direction == "right":
             self.x = random.randint(-BASE_WIDTH, 0)
         else:
             self.x = random.randint(BASE_WIDTH, BASE_WIDTH * 2)
 
     def update(self, dt):
-        if AIR_DIRECTION == "right":
+        if self.direction == "right":
             self.x += self.speed * dt
             if self.x > BASE_WIDTH:
                 self.reset()
@@ -673,9 +674,12 @@ class WindEffect:
         pygame.draw.rect(surface, (200, 200, 200),
                          (int(self.x), int(self.y), WIND_WIDTH, WIND_HEIGHT))
 
-wind = [WindEffect() for _ in range(WIND_COUNT)]
-wind0 = [WindEffect() for _ in range(WIND_COUNT)]
 
+# wind follows AIR_DIRECTION, wind0 goes the opposite way
+opposite = "left" if AIR_DIRECTION == "right" else "right"
+
+wind  = [WindEffect(AIR_DIRECTION) for _ in range(WIND_COUNT)]
+wind0 = [WindEffect(opposite)      for _ in range(WIND_COUNT)]
 # ---------------------------
 # Cached score rendering
 # ---------------------------
