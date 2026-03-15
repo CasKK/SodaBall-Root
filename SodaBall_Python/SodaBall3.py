@@ -503,7 +503,7 @@ class GameController:
         if node and node.is_ready():
             node.send_command("R", "nosmoke")
 
-        # Jump to the *start* of NOSMOKE, not the end
+        # Jump to the *start* of NOSMOKE
         self.airPhase = "NOSMOKE"
         self.airStart = time.time() - (self.airDuration - self.nosmokeDuration)
 
@@ -602,7 +602,7 @@ surface = window.get_surface()
 # ---------------------------
 render_surface = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
 render_surface0 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
-render_surface_effects = pygame.Surface((BASE_WIDTH, BASE_HEIGHT), pygame.SRCALPHA)
+#render_surface_effects = pygame.Surface((BASE_WIDTH, BASE_HEIGHT), pygame.SRCALPHA)
 
 # Fonts
 font = pygame.font.Font(asset_path("Press_Start_2P/PressStart2P-Regular.ttf"), 60)
@@ -674,6 +674,7 @@ class WindEffect:
                          (int(self.x), int(self.y), WIND_WIDTH, WIND_HEIGHT))
 
 wind = [WindEffect() for _ in range(WIND_COUNT)]
+wind0 = [WindEffect() for _ in range(WIND_COUNT)]
 
 # ---------------------------
 # Cached score rendering
@@ -732,7 +733,7 @@ while running:
 
     render_surface.blit(background_surface, (0, 0))
     render_surface0.blit(background_surface, (0, 0))
-    render_surface_effects.fill((0, 0, 0, 0)) 
+    #render_surface_effects.fill((0, 0, 0, 0)) 
 
     # Money
     current_money_1 = int(controller.money[1])
@@ -785,14 +786,24 @@ while running:
         show_air = True
         frame_index = (pygame.time.get_ticks() // 100) % len(windsock_frames)
 
-        if air_owner == 1: ##################### Might be able to blit this onto background surface.
-            render_surface_effects.blit( ########## And only at frame-interval to avoid alpha blit every frame (as it does now). 
+        if air_owner == 1:
+            render_surface.blit( ########## And only at frame-interval to avoid alpha blit every frame (as it does now). 
                 windsock_frames[frame_index],
                 (BASE_WIDTH//2 - windsock_frames[0].get_width()//2,
                  BASE_HEIGHT - windsock_frames[0].get_height())
             )
+            render_surface0.blit(
+                windsock_frames1[frame_index],
+                (BASE_WIDTH//2 - windsock_frames1[0].get_width()//2,
+                 BASE_HEIGHT - windsock_frames1[0].get_height())
+            )
         else:
-            render_surface_effects.blit(
+            render_surface0.blit(
+                windsock_frames[frame_index],
+                (BASE_WIDTH//2 - windsock_frames[0].get_width()//2,
+                 BASE_HEIGHT - windsock_frames[0].get_height())
+            )
+            render_surface.blit(
                 windsock_frames1[frame_index],
                 (BASE_WIDTH//2 - windsock_frames1[0].get_width()//2,
                  BASE_HEIGHT - windsock_frames1[0].get_height())
@@ -803,19 +814,22 @@ while running:
     if show_air:
         for particle in wind:
             particle.update(dt)
-            particle.draw(render_surface_effects)
+            particle.draw(render_surface)
+        for particle in wind0:
+            particle.update(-dt)
+            particle.draw(render_surface0)
 
 
     # Put it all together
 
-    render_surface.blit(render_surface_effects, (0,0))
+    #render_surface.blit(render_surface_effects, (0,0))
     # Scale base render to monitor size
     scaled_left = pygame.transform.scale(
         render_surface,
         (LEFT_WIDTH, LEFT_HEIGHT)
     )
 
-    render_surface0.blit(pygame.transform.flip(render_surface_effects, True, False), (0,0))
+    #render_surface0.blit(pygame.transform.flip(render_surface_effects, True, False), (0,0))
     scaled_right = pygame.transform.scale(
         render_surface0,
         (RIGHT_WIDTH, RIGHT_HEIGHT)
