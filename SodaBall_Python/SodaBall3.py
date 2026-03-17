@@ -623,7 +623,7 @@ bane_img = pygame.transform.scale(
 )
 money_coverL = pygame.transform.scale_by(
     pygame.image.load(asset_path("moneycover.png")).convert(), 2)
-money_coverR = pygame.transform.flip(money_coverL)
+money_coverR = pygame.transform.flip(money_coverL, True, False)
 
 score_coverL = pygame.transform.scale_by(
     pygame.image.load(asset_path("scorecoverL.png")).convert(), 2)
