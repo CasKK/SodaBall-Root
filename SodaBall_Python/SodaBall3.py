@@ -30,7 +30,6 @@ class PortProbe:
         try:
             raw = self.ser.readline()
         except (serial.SerialException, OSError):
-            # Port disappeared while probing
             self._kill()
             return None
 
@@ -68,22 +67,19 @@ class NodeManager:
         self.nodes_by_port = {}
         self.discovery_complete = False
 
-        self.scan_interval = 0.5      # seconds
+        self.scan_interval = 0.5
         self.last_scan_time = 0
     
     def update(self):
         now = time.time()
 
-        # Always monitor removals quickly
         self._check_removals()
 
-        # Only scan occasionally
         if now - self.last_scan_time < self.scan_interval:
             return
 
         self.last_scan_time = now
 
-        # If already complete, don't probe
         if self.discovery_complete:
             return
 
@@ -99,7 +95,6 @@ class NodeManager:
             if port in self.probes or port in self.nodes_by_port:
                 continue
 
-            # Only probe USB devices (important!)
             if "ttyUSB" not in port and "ttyACM" not in port:
                 continue
 
@@ -109,7 +104,6 @@ class NodeManager:
             except:
                 pass
 
-        # Poll probes
         for port, probe in list(self.probes.items()):
             node_id = probe.poll()
 
@@ -139,7 +133,6 @@ class NodeManager:
                 del self.nodes_by_port[port]
                 self.controller.nodes.pop(node.id, None)
 
-                # Restart discovery
                 self.discovery_complete = False
 
 
@@ -152,7 +145,7 @@ class ArduinoNode:
         self.ser = None
         self.connected = False
         self.last_connect_attempt = 0
-        self.connect_interval = 0.5  # seconds
+        self.connect_interval = 0.5
 
         self.seen = OrderedDict()
         self.cmd_seq = 0
@@ -185,7 +178,6 @@ class ArduinoNode:
         self.ser = None
 
     def on_connect(self):
-        # Arduino reboot == protocol reset
         self.seen.clear()
         self.pending.clear()
         self.queue.clear()
@@ -291,7 +283,6 @@ class ArduinoNode:
             self.send_ack(sender_id, seq)
             return
 
-        # ACK for outgoing commands
         if msg_type == "A":
             if seq in self.pending:
                 del self.pending[seq]
@@ -306,9 +297,8 @@ class ArduinoNode:
         self.seen[key] = None
 
         if len(self.seen) > MAX_SEEN:
-            self.seen.popitem(last=False)  # removes oldest
+            self.seen.popitem(last=False)
 
-        # Dispatch events
         self.handle_event(msg_type, parts, sender_id, seq)
 
     def handle_event(self, msg_type, parts, sender_id, seq):
@@ -322,16 +312,152 @@ class ArduinoNode:
         self.send_ack(sender_id, seq)
 
 
+# ==========================================================
+# Audio Manager
+# ==========================================================
+
+class AudioManager:
+    """
+    Manages background music and per-team goal celebration sounds.
+
+    Directory layout expected under BASE_DIR/Audio/:
+        Audio/
+            background.ogg          ← looping ambient track
+            team1/
+                goal_1.ogg
+                goal_2.ogg
+                ...                 ← any number of clips
+            team2/
+                goal_1.ogg
+                goal_2.ogg
+                ...
+
+    All clips should be OGG Vorbis for best performance on Pi.
+    MP3 also works for background.ogg if you prefer.
+    """
+
+    MUSIC_NORMAL_VOL  = 0.7    # background volume during normal play
+    MUSIC_DUCKED_VOL  = 0.12   # background volume while celebration plays
+    CELEBRATE_VOL     = 1.0    # celebration clip volume
+    FADE_IN_RATE      = 0.6    # volume units per second when fading back in
+    CELEBRATE_CHANNEL = 1      # pygame mixer channel reserved for celebrations
+
+    def __init__(self, base_dir: Path):
+        # pygame.mixer must be initialised before this is created
+        pygame.mixer.set_num_channels(8)
+
+        self._channel = pygame.mixer.Channel(self.CELEBRATE_CHANNEL)
+        self._celebrating = False
+
+        # ── Load celebration pools ──────────────────────────────────────────
+        self._pools: dict[int, list[pygame.mixer.Sound]] = {}
+        self._last_played: dict[int, int] = {}   # avoid immediate repeat
+
+        for team_id in (1, 2):
+            folder = base_dir / "Audio" / f"team{team_id}"
+            sounds = []
+            if folder.exists():
+                for f in sorted(folder.iterdir()):
+                    if f.suffix.lower() in (".ogg", ".wav", ".mp3"):
+                        try:
+                            s = pygame.mixer.Sound(str(f))
+                            s.set_volume(self.CELEBRATE_VOL)
+                            sounds.append(s)
+                            print(f"[AUDIO] Loaded team{team_id}: {f.name}")
+                        except Exception as e:
+                            print(f"[AUDIO] Failed to load {f}: {e}")
+            else:
+                print(f"[AUDIO] Warning: no folder at {folder}")
+            self._pools[team_id] = sounds
+            self._last_played[team_id] = -1
+
+        # ── Load & start background music ───────────────────────────────────
+        bg_path = base_dir / "Audio" / "background.ogg"
+        if not bg_path.exists():
+            # Fallback: try .mp3
+            bg_path = base_dir / "Audio" / "background.mp3"
+
+        if bg_path.exists():
+            try:
+                pygame.mixer.music.load(str(bg_path))
+                pygame.mixer.music.set_volume(self.MUSIC_NORMAL_VOL)
+                pygame.mixer.music.play(-1)
+                print(f"[AUDIO] Background music started: {bg_path.name}")
+            except Exception as e:
+                print(f"[AUDIO] Failed to load background music: {e}")
+        else:
+            print("[AUDIO] Warning: no background.ogg or background.mp3 found in Audio/")
+
+    def play_goal(self, team_id: int):
+        """
+        Called when a goal is scored.  Picks a non-repeating random clip
+        from the team's pool, ducks the background music, and plays it.
+        """
+        pool = self._pools.get(team_id, [])
+        if not pool:
+            print(f"[AUDIO] No celebration sounds for team {team_id}")
+            return
+
+        # Pick a random clip, avoiding immediate repeat if pool > 1
+        if len(pool) > 1:
+            choices = [i for i in range(len(pool)) if i != self._last_played[team_id]]
+        else:
+            choices = [0]
+        idx = random.choice(choices)
+        self._last_played[team_id] = idx
+
+        sound = pool[idx]
+
+        # Stop any ongoing celebration
+        if self._channel.get_busy():
+            self._channel.stop()
+
+        # Duck background and fire celebration
+        pygame.mixer.music.set_volume(self.MUSIC_DUCKED_VOL)
+        self._channel.play(sound)
+        self._celebrating = True
+
+        if debug:
+            print(f"[AUDIO] Goal! team{team_id} clip {idx+1}/{len(pool)}")
+
+    def update(self, dt: float):
+        """
+        Call once per frame from the main loop.
+        Fades background music back in after celebration ends.
+        """
+        if not self._celebrating:
+            return
+
+        if not self._channel.get_busy():
+            # Celebration finished — fade background back in
+            current_vol = pygame.mixer.music.get_volume()
+            new_vol = min(current_vol + self.FADE_IN_RATE * dt, self.MUSIC_NORMAL_VOL)
+            pygame.mixer.music.set_volume(new_vol)
+            if new_vol >= self.MUSIC_NORMAL_VOL:
+                self._celebrating = False
+                if debug:
+                    print("[AUDIO] Background restored")
+
+    def stop_all(self):
+        """Clean shutdown."""
+        self._channel.stop()
+        pygame.mixer.music.stop()
+
+
+# ==========================================================
+# Game Controller
+# ==========================================================
+
 class GameController:
     def __init__(self):
         self.score = {1: 0, 2: 0}
         self.money = {1: 0, 2: 0}
         self.nodes = {}
 
-        self.airOwner = None  # node_id that owns the current air sequence
-        self.airDuration = 10.0        # total air time
-        self.smokeStartDelay = 1.0   # seconds after air starts
-        self.smokeDuration = 5.0     # seconds before air ends
+        self.airOwner = None
+        self.airDuration = 10.0
+        self.smokeStartDelay = 1.0
+        self.smokeDuration = 5.0
         self.nosmokeDuration = 3.0
         self.airCost = 20
         self.bigCoin = 20
@@ -341,6 +467,9 @@ class GameController:
         self.airPhase = "IDLE"
         self.smokeActive = False
 
+        # Flag read by the main loop to trigger audio (set from game thread)
+        self.pending_celebration: int | None = None  # team_id or None
+        self._celebration_lock = threading.Lock()
 
     def register_node(self, node):
         self.nodes[node.id] = node
@@ -356,7 +485,6 @@ class GameController:
             self.handle_button(node, data[0])
         elif etype == "HELLO":
             self.sync_node_state(node)
-
 
     def handle_button(self, node_id, button):
         if button == "Air" and self.airPhase == "IDLE" and self.money[node_id] >= self.airCost:
@@ -383,17 +511,21 @@ class GameController:
                 self.money[node_id] += 10
                 n.send_command("D", self.money[node_id])
                 if debug: print("D, +smallCoin")
-            
 
     def handle_goal(self, scoring_node, side):
+        # The team that conceded is scoring_node; the OTHER team celebrates
+        celebrating_team = 2 if scoring_node == 1 else 1
         if scoring_node == 1:
             self.score[2] += 1
         else:
             self.score[1] += 1
 
-        if debug: print(f"Goal registered in {scoring_node}'s net! Score is now {self.score[1]} : {self.score[2]}")
-        # Show animation based on side added later
+        if debug:
+            print(f"Goal in node {scoring_node}'s net! Score: {self.score[1]}:{self.score[2]}")
 
+        # Signal main loop to play audio (thread-safe flag)
+        with self._celebration_lock:
+            self.pending_celebration = celebrating_team
 
     def checkStates(self):
         if self.airPhase == "IDLE":
@@ -401,7 +533,6 @@ class GameController:
 
         elapsed = time.time() - self.airStart
 
-        # AIR → SMOKE
         if self.airPhase == "AIR" and elapsed >= self.smokeStartDelay:
             node = self.nodes.get(self.airOwner)
             if node and node.is_ready():
@@ -409,7 +540,6 @@ class GameController:
             self.airPhase = "SMOKE"
             print(f"R, smoke → node {self.airOwner}")
 
-        # SMOKE → NOSMOKE
         elif self.airPhase == "SMOKE" and elapsed >= (self.airDuration - self.smokeDuration):
             node = self.nodes.get(self.airOwner)
             if node and node.is_ready():
@@ -417,7 +547,6 @@ class GameController:
             self.airPhase = "NOSMOKE"
             print(f"R, nosmoke → node {self.airOwner}")
 
-        # NOSMOKE → DONE
         elif self.airPhase == "NOSMOKE" and elapsed >= self.airDuration:
             node = self.nodes.get(self.airOwner)
             if node and node.is_ready():
@@ -427,29 +556,23 @@ class GameController:
             self.airStart = None
             print("R, noair → done")
 
-
     def sync_node_state(self, node_id):
         node = self.nodes.get(node_id)
         if not node or not node.is_ready():
             return
 
         node.send_command("D", self.money[node_id])
-        # Node does NOT own air → force off
         if self.airPhase == "IDLE" or node_id != self.airOwner:
             node.send_command("R", "noair")
             node.send_command("R", "nosmoke")
             return
 
-        # Node owns air → restore correct phase
         node.send_command("R", "air")
-
         elapsed = time.time() - self.airStart
-
         if self.airPhase in ("SMOKE",):
             node.send_command("R", "smoke")
         elif self.airPhase in ("NOSMOKE",):
             node.send_command("R", "nosmoke")
-
 
     def manual_command(self, cmd):
         parts = cmd.strip().split()
@@ -461,26 +584,29 @@ class GameController:
         try:
             if op == "air":
                 self.start_air(int(parts[1]))
-
             elif op == "noair":
                 self.fast_forward_air()
-
             elif op == "money":
                 node_id = int(parts[1])
                 delta = int(parts[2])
                 self.adjust_money(node_id, delta)
-
+            elif op == "goal":
+                # Manual goal trigger for testing: "goal 1" or "goal 2"
+                team = int(parts[1])
+                with self._celebration_lock:
+                    self.pending_celebration = team
+                    # Also update score for completeness
+                    self.score[team] += 1
+                    print(f"[MANUAL] Goal for team {team}, score: {self.score[1]}:{self.score[2]}")
             else:
-                print("Unknown command")
+                print("Unknown command. Available: air <id>, noair, money <id> <delta>, goal <team>")
 
         except (IndexError, ValueError):
             print("Invalid command syntax")
 
-
-
     def start_air(self, node_id):
         if self.airPhase != "IDLE":
-            return  # ignore or log
+            return
 
         node = self.nodes.get(node_id)
         if not node or not node.is_ready():
@@ -494,7 +620,7 @@ class GameController:
 
         if debug:
             print(f"[MANUAL] air → node {node_id}")
-    
+
     def fast_forward_air(self):
         if self.airPhase not in ("AIR", "SMOKE"):
             return
@@ -503,14 +629,12 @@ class GameController:
         if node and node.is_ready():
             node.send_command("R", "nosmoke")
 
-        # Jump to the *start* of NOSMOKE
         self.airPhase = "NOSMOKE"
         self.airStart = time.time() - (self.airDuration - self.nosmokeDuration)
 
         if debug:
             print("[MANUAL] fast-forward → nosmoke (with dwell)")
 
-    
     def adjust_money(self, node_id, delta):
         if node_id not in self.money:
             return
@@ -524,6 +648,10 @@ class GameController:
         if debug:
             print(f"[MANUAL] money[{node_id}] += {delta} → {self.money[node_id]}")
 
+
+# ==========================================================
+# Bootstrap
+# ==========================================================
 
 controller = GameController()
 manager = NodeManager(controller, required_ids={1, 2})
@@ -548,13 +676,28 @@ def game_loop():
 
 threading.Thread(target=game_loop, daemon=True).start()
 
-###### File path stuff ######
+# ==========================================================
+# File paths
+# ==========================================================
+
 BASE_DIR = Path(__file__).resolve().parent
+
 def asset_path(*parts):
     return BASE_DIR.joinpath("Figures_and_Fonts", *parts)
 
-###### Monitor setup ######
+# ==========================================================
+# pygame + mixer init
+# ==========================================================
+
 pygame.init()
+pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=512)
+
+# AudioManager must be created AFTER pygame.mixer.init()
+audio = AudioManager(BASE_DIR)
+
+# ==========================================================
+# Monitor setup
+# ==========================================================
 
 desktop_sizes = pygame.display.get_desktop_sizes()
 print("Desktop sizes:", desktop_sizes)
@@ -571,17 +714,11 @@ if LEFT_HEIGHT != RIGHT_HEIGHT:
 TOTAL_WIDTH = LEFT_WIDTH + RIGHT_WIDTH
 TOTAL_HEIGHT = LEFT_HEIGHT
 
-# Create one spanning borderless window
-window = Window(
-    "SodaBall",
-    size=(TOTAL_WIDTH, TOTAL_HEIGHT)
-)
+window = Window("SodaBall", size=(TOTAL_WIDTH, TOTAL_HEIGHT))
 window.borderless = True
 surface = window.get_surface()
 
 SCALE_FACTOR = 2
-# if LEFT_HEIGHT == 270:
-#     LAST_SCALE_FACTOR = 1
 if LEFT_HEIGHT == 540:
     LAST_SCALE_FACTOR = 1
 elif LEFT_HEIGHT == 1080:
@@ -589,67 +726,69 @@ elif LEFT_HEIGHT == 1080:
 elif LEFT_HEIGHT == 2160:
     LAST_SCALE_FACTOR = 4
 else:
-    raise RuntimeError("Unsupported resolution. Suppoorted resolutions: 540p, 1080p, 4k.", desktop_sizes)
+    raise RuntimeError("Unsupported resolution. Supported: 540p, 1080p, 4k.", desktop_sizes)
 
-# ---------------------------
+# ==========================================================
 # Assets
-# ---------------------------
+# ==========================================================
 
 bane_img = pygame.transform.scale_by(
-    pygame.image.load(asset_path("Bane.png")).convert(),SCALE_FACTOR) # Source image is 480x270
+    pygame.image.load(asset_path("Bane.png")).convert(), SCALE_FACTOR)
 
 BASE_WIDTH = bane_img.get_width()
 BASE_HEIGHT = bane_img.get_height()
 
 money_cover = pygame.transform.scale_by(
-    pygame.image.load(asset_path("moneycover.png")).convert(), SCALE_FACTOR) # Source image is 236x41
+    pygame.image.load(asset_path("moneycover.png")).convert(), SCALE_FACTOR)
 
 score_coverL = pygame.transform.scale_by(
-    pygame.image.load(asset_path("scorecoverL.png")).convert(), SCALE_FACTOR) # Source image is 152x229
+    pygame.image.load(asset_path("scorecoverL.png")).convert(), SCALE_FACTOR)
 score_coverR = pygame.transform.scale_by(
-    pygame.image.load(asset_path("scorecoverR.png")).convert(), SCALE_FACTOR) # Source image is 152x229
+    pygame.image.load(asset_path("scorecoverR.png")).convert(), SCALE_FACTOR)
 
 wind_img = pygame.transform.scale_by(
-    pygame.image.load(asset_path("Wind.png")).convert_alpha(), # Source image is 32x32
-    (2*SCALE_FACTOR, 2*SCALE_FACTOR) # double size to match the screen size of other assets
+    pygame.image.load(asset_path("Wind.png")).convert_alpha(),
+    (2 * SCALE_FACTOR, 2 * SCALE_FACTOR)
 )
 wind_img1 = pygame.transform.flip(wind_img, True, False)
 
 windsock_frames = [
-    pygame.transform.scale_by(pygame.image.load(asset_path(f"pixilart_windsock/windsock_{i+1}.png")).convert_alpha(),SCALE_FACTOR) # Source image is 123x102
+    pygame.transform.scale_by(
+        pygame.image.load(asset_path(f"pixilart_windsock/windsock_{i+1}.png")).convert_alpha(),
+        SCALE_FACTOR)
     for i in range(4)]
 windsock_frames1 = [pygame.transform.flip(f, True, False) for f in windsock_frames]
 
 profile_pictures = [
     pygame.transform.scale(
         pygame.image.load(asset_path(f"Profiles/profile_img_{i+1}.jpg")).convert_alpha(),
-        (75*SCALE_FACTOR, 75*SCALE_FACTOR)
+        (75 * SCALE_FACTOR, 75 * SCALE_FACTOR)
     )
     for i in range(2)
 ]
 
 # Fonts
-font = pygame.font.Font(asset_path("Press_Start_2P/PressStart2P-Regular.ttf"), 30*SCALE_FACTOR)
-scoreFont = pygame.font.Font(asset_path("digital_7/digital-7.ttf"), 250*SCALE_FACTOR)
+font = pygame.font.Font(asset_path("Press_Start_2P/PressStart2P-Regular.ttf"), 30 * SCALE_FACTOR)
+scoreFont = pygame.font.Font(asset_path("digital_7/digital-7.ttf"), 250 * SCALE_FACTOR)
 
 RED = (220, 0, 0)
 
-# ---------------------------
-# Internal render surface
-# ---------------------------
-render_surface = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
+# ==========================================================
+# Render surfaces
+# ==========================================================
+
+render_surface  = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
 render_surface0 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
 
-
-# ---------------------------
+# ==========================================================
 # Wind particles
-# ---------------------------
-# Wind configuration
+# ==========================================================
+
 WIND_COUNT = 200
 WIND_SPEED_MIN = 300 * SCALE_FACTOR
 WIND_SPEED_MAX = 500 * SCALE_FACTOR
-WIND_WIDTH = 10 * SCALE_FACTOR
-WIND_HEIGHT = 2 * SCALE_FACTOR
+WIND_WIDTH  = 10 * SCALE_FACTOR
+WIND_HEIGHT =  2 * SCALE_FACTOR
 AIR_DIRECTION = "right"
 show_air = False
 
@@ -661,7 +800,7 @@ class WindEffect:
     def _direction(self):
         d = controller.airOwner
         if self.mirror:
-            return 2 if d == 1 else 1  # flip it
+            return 2 if d == 1 else 1
         return d
 
     def reset(self):
@@ -686,12 +825,13 @@ class WindEffect:
         pygame.draw.rect(surface, (200, 200, 200),
                          (int(self.x), int(self.y), WIND_WIDTH, WIND_HEIGHT))
 
-wind  = [WindEffect() for _ in range(WIND_COUNT)]
-wind0 = [WindEffect(True) for _ in range(WIND_COUNT)]
+wind  = [WindEffect()      for _ in range(WIND_COUNT)]
+wind0 = [WindEffect(True)  for _ in range(WIND_COUNT)]
 
-# ---------------------------
-# Cached score rendering and more
-# ---------------------------
+# ==========================================================
+# Cached rendering state
+# ==========================================================
+
 last_score_1 = None
 last_score_2 = None
 score_text_1 = None
@@ -704,7 +844,6 @@ last_money_1 = None
 last_money_2 = None
 money_text_1 = None
 money_text_2 = None
-#background_surface = None
 background_surface1 = None
 background_surface2 = None
 
@@ -712,10 +851,10 @@ clock = pygame.time.Clock()
 running = True
 
 profile_pictures_number1 = 0
-
 last_windsock_frame_index = -1
 
 reset = True
+reset1 = False
 windsockReset = True
 score_change = False
 
@@ -724,17 +863,20 @@ button_rect = pygame.Rect(10 + 920, 195, 600, 600)
 # ==========================================================
 # Main loop
 # ==========================================================
+
 while running:
     start = time.perf_counter()
     dt = clock.tick(30) / 1000.0
-    for event in pygame.event.get(): ######## Input logic
+
+    # ── Input ────────────────────────────────────────────────────────────────
+    for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 running = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 1:  # Left mouse button
+            if event.button == 1:
                 if button_rect.collidepoint(event.pos):
                     print("Button clicked")
                     if profile_pictures_number1 <= 2:
@@ -743,121 +885,139 @@ while running:
                         profile_pictures_number1 += 1
                     reset = True
 
-    # ---------------------------
-    # Render base scene
-    # ---------------------------
+    # ── Audio: drain pending celebration flag (main thread only) ─────────────
+    with controller._celebration_lock:
+        pending_team = controller.pending_celebration
+        controller.pending_celebration = None
+
+    if pending_team is not None:
+        audio.play_goal(pending_team)
+
+    audio.update(dt)   # handles fade-back-in each frame
+
+    # ── Render base scene ────────────────────────────────────────────────────
     if reset:
         if debug: print("Base blit")
-        #background_surface = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
         background_surface1 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
         background_surface2 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
-        #background_surface.blit(bane_img, (0, 0))
         background_surface1.blit(bane_img, (0, 0))
         background_surface2.blit(bane_img, (0, 0))
 
-        # Profiles
-        background_surface1.blit(profile_pictures[profile_pictures_number1], (5*SCALE_FACTOR, 98*SCALE_FACTOR))
-        background_surface1.blit(profile_pictures[1], (BASE_WIDTH - profile_pictures[1].get_width() - 5*SCALE_FACTOR, 98*SCALE_FACTOR))
-        background_surface2.blit(profile_pictures[profile_pictures_number1], (BASE_WIDTH - profile_pictures[1].get_width() - 5*SCALE_FACTOR, 98*SCALE_FACTOR))
-        background_surface2.blit(profile_pictures[1], (5*SCALE_FACTOR, 98*SCALE_FACTOR))
+        background_surface1.blit(profile_pictures[profile_pictures_number1],
+                                 (5 * SCALE_FACTOR, 98 * SCALE_FACTOR))
+        background_surface1.blit(profile_pictures[1],
+                                 (BASE_WIDTH - profile_pictures[1].get_width() - 5 * SCALE_FACTOR,
+                                  98 * SCALE_FACTOR))
+        background_surface2.blit(profile_pictures[profile_pictures_number1],
+                                 (BASE_WIDTH - profile_pictures[1].get_width() - 5 * SCALE_FACTOR,
+                                  98 * SCALE_FACTOR))
+        background_surface2.blit(profile_pictures[1],
+                                 (5 * SCALE_FACTOR, 98 * SCALE_FACTOR))
 
         reset = False
-        reset1 = True # To finish reset while avoiding race condition.
-
+        reset1 = True
 
     # Money
     current_money_1 = int(controller.money[1])
     current_money_2 = int(controller.money[2])
-    
+
     if current_money_1 != last_money_1 or reset1:
-        background_surface1.blit(money_cover, (2*SCALE_FACTOR,0))
-        background_surface2.blit(money_cover, (BASE_WIDTH - money_cover.get_width() - 2*SCALE_FACTOR,0))
-        background_surface1.blit(wind_img1,(int(BASE_WIDTH/12), -10*SCALE_FACTOR))
-        background_surface2.blit(wind_img,(int(BASE_WIDTH - BASE_WIDTH/12 - wind_img.get_width()), -10*SCALE_FACTOR))
-        money_text_1 = font.render(f"{int(controller.money[1]/20)}", True, RED)
-        background_surface1.blit(money_text_1, (int(BASE_WIDTH/50), 8*SCALE_FACTOR))
-        background_surface2.blit(money_text_1,(int(BASE_WIDTH - (BASE_WIDTH/50 + money_text_1.get_width())), 8*SCALE_FACTOR))
+        background_surface1.blit(money_cover, (2 * SCALE_FACTOR, 0))
+        background_surface2.blit(money_cover,
+                                 (BASE_WIDTH - money_cover.get_width() - 2 * SCALE_FACTOR, 0))
+        background_surface1.blit(wind_img1, (int(BASE_WIDTH / 12), -10 * SCALE_FACTOR))
+        background_surface2.blit(wind_img,
+                                 (int(BASE_WIDTH - BASE_WIDTH / 12 - wind_img.get_width()),
+                                  -10 * SCALE_FACTOR))
+        money_text_1 = font.render(f"{int(controller.money[1] / 20)}", True, RED)
+        background_surface1.blit(money_text_1, (int(BASE_WIDTH / 50), 8 * SCALE_FACTOR))
+        background_surface2.blit(money_text_1,
+                                 (int(BASE_WIDTH - (BASE_WIDTH / 50 + money_text_1.get_width())),
+                                  8 * SCALE_FACTOR))
         last_money_1 = current_money_1
-    
+
     if current_money_2 != last_money_2 or reset1:
-        background_surface2.blit(money_cover, (2*SCALE_FACTOR,0))
-        background_surface1.blit(money_cover, (BASE_WIDTH - money_cover.get_width() - 2*SCALE_FACTOR,0))
-        background_surface2.blit(wind_img1,(int(BASE_WIDTH/12), -10*SCALE_FACTOR))
-        background_surface1.blit(wind_img,(int(BASE_WIDTH - BASE_WIDTH/12 - wind_img.get_width()), -10*SCALE_FACTOR))
-        money_text_2 = font.render(f"{int(controller.money[2]/20)}", True, RED)
-        background_surface1.blit(money_text_2,(int(BASE_WIDTH - (BASE_WIDTH/50 + money_text_2.get_width())), 8*SCALE_FACTOR))
-        background_surface2.blit(money_text_2, (int(BASE_WIDTH/50), 8*SCALE_FACTOR))
+        background_surface2.blit(money_cover, (2 * SCALE_FACTOR, 0))
+        background_surface1.blit(money_cover,
+                                 (BASE_WIDTH - money_cover.get_width() - 2 * SCALE_FACTOR, 0))
+        background_surface2.blit(wind_img1, (int(BASE_WIDTH / 12), -10 * SCALE_FACTOR))
+        background_surface1.blit(wind_img,
+                                 (int(BASE_WIDTH - BASE_WIDTH / 12 - wind_img.get_width()),
+                                  -10 * SCALE_FACTOR))
+        money_text_2 = font.render(f"{int(controller.money[2] / 20)}", True, RED)
+        background_surface1.blit(money_text_2,
+                                 (int(BASE_WIDTH - (BASE_WIDTH / 50 + money_text_2.get_width())),
+                                  8 * SCALE_FACTOR))
+        background_surface2.blit(money_text_2, (int(BASE_WIDTH / 50), 8 * SCALE_FACTOR))
         last_money_2 = current_money_2
 
-    
     # Score
     current_score_1 = int(controller.score[1])
     current_score_2 = int(controller.score[2])
 
     if current_score_1 != last_score_1 or reset1:
-        score_surface1L.blit(score_coverL, (0,0))
-        score_surface1R.blit(score_coverR, (0,0))
+        score_surface1L.blit(score_coverL, (0, 0))
+        score_surface1R.blit(score_coverR, (0, 0))
         score_text_1 = scoreFont.render(str(current_score_1), True, RED)
         score_height = 94 * SCALE_FACTOR - (score_text_1.get_height() // 2)
         score_surface1L.blit(score_text_1, (0, score_height))
         score_surface1R.blit(score_text_1, (152 * SCALE_FACTOR - score_text_1.get_width(), score_height))
         background_surface1.blit(score_surface1L, (88 * SCALE_FACTOR, 41 * SCALE_FACTOR))
-        background_surface2.blit(score_surface1R, (BASE_WIDTH//2,41*SCALE_FACTOR))
-        score_change = True # Because windsock and score interfere.
+        background_surface2.blit(score_surface1R, (BASE_WIDTH // 2, 41 * SCALE_FACTOR))
+        score_change = True
         last_score_1 = current_score_1
 
     if current_score_2 != last_score_2 or reset1:
-        score_surface2L.blit(score_coverL, (0,0))
-        score_surface2R.blit(score_coverR, (0,0))
+        score_surface2L.blit(score_coverL, (0, 0))
+        score_surface2R.blit(score_coverR, (0, 0))
         score_text_2 = scoreFont.render(str(current_score_2), True, RED)
         score_height = 94 * SCALE_FACTOR - (score_text_2.get_height() // 2)
         score_surface2R.blit(score_text_2, (152 * SCALE_FACTOR - score_text_2.get_width(), score_height))
         score_surface2L.blit(score_text_2, (0, score_height))
-        background_surface1.blit(score_surface2R, (BASE_WIDTH//2,41*SCALE_FACTOR))
+        background_surface1.blit(score_surface2R, (BASE_WIDTH // 2, 41 * SCALE_FACTOR))
         background_surface2.blit(score_surface2L, (88 * SCALE_FACTOR, 41 * SCALE_FACTOR))
-        score_change = True # Because windsock and score interfere.
+        score_change = True
         last_score_2 = current_score_2
-        reset1 = False # To reset while avoiding race condition
+        reset1 = False
 
-
-    # Wind
+    # Wind / windsock
     air_phase = controller.airPhase
     air_owner = controller.airOwner
 
     if air_phase != "IDLE":
         frame_index = (pygame.time.get_ticks() // 100) % len(windsock_frames)
         if frame_index != last_windsock_frame_index or score_change:
-        # Windsock
             AIR_DIRECTION = "right" if air_owner == 1 else "left"
             show_air = True
-            
+
             background_surface1.blit(score_surface1L, (88 * SCALE_FACTOR, 41 * SCALE_FACTOR))
-            background_surface2.blit(score_surface1R, (BASE_WIDTH//2,41*SCALE_FACTOR))
-                
-            background_surface1.blit(score_surface2R, (BASE_WIDTH//2,41*SCALE_FACTOR))
+            background_surface2.blit(score_surface1R, (BASE_WIDTH // 2, 41 * SCALE_FACTOR))
+            background_surface1.blit(score_surface2R, (BASE_WIDTH // 2, 41 * SCALE_FACTOR))
             background_surface2.blit(score_surface2L, (88 * SCALE_FACTOR, 41 * SCALE_FACTOR))
 
             if air_owner == 1:
-                background_surface1.blit(windsock_frames[frame_index],(178*SCALE_FACTOR, 168*SCALE_FACTOR))
-                background_surface2.blit(windsock_frames1[frame_index], (178*SCALE_FACTOR, 168*SCALE_FACTOR))
+                background_surface1.blit(windsock_frames[frame_index],
+                                         (178 * SCALE_FACTOR, 168 * SCALE_FACTOR))
+                background_surface2.blit(windsock_frames1[frame_index],
+                                         (178 * SCALE_FACTOR, 168 * SCALE_FACTOR))
             else:
-                background_surface2.blit(windsock_frames[frame_index],(178*SCALE_FACTOR, 168*SCALE_FACTOR))
-                background_surface1.blit(windsock_frames1[frame_index],(178*SCALE_FACTOR, 168*SCALE_FACTOR))
-            
-            
+                background_surface2.blit(windsock_frames[frame_index],
+                                         (178 * SCALE_FACTOR, 168 * SCALE_FACTOR))
+                background_surface1.blit(windsock_frames1[frame_index],
+                                         (178 * SCALE_FACTOR, 168 * SCALE_FACTOR))
+
             last_windsock_frame_index = frame_index
-            score_change = False # Because windsock and score interfere.
+            score_change = False
     else:
         if last_windsock_frame_index != -1:
             print("place")
-            #blit empty windsock backbround (score_surfaceXX) or reset
             reset = True
             last_windsock_frame_index = -1
         show_air = False
 
     render_surface.blit(background_surface1, (0, 0))
     render_surface0.blit(background_surface2, (0, 0))
-    
+
     if show_air:
         for particle in wind:
             particle.update(dt)
@@ -866,14 +1026,13 @@ while running:
             particle.update(dt)
             particle.draw(render_surface0)
 
-    # Scale base render to monitor size
-    scaled_left = pygame.transform.scale_by(render_surface, LAST_SCALE_FACTOR)
+    scaled_left  = pygame.transform.scale_by(render_surface,  LAST_SCALE_FACTOR)
     scaled_right = pygame.transform.scale_by(render_surface0, LAST_SCALE_FACTOR)
 
-    # Draw both halves into spanning window
-    surface.blit(scaled_left, (0, 0))
+    surface.blit(scaled_left,  (0, 0))
     surface.blit(scaled_right, (LEFT_WIDTH, 0))
     window.flip()
     print(time.perf_counter() - start)
 
+audio.stop_all()
 pygame.quit()
