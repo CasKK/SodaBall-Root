@@ -717,8 +717,8 @@ button_rect = pygame.Rect(10 + 920, 195, 600, 600)
 # Main loop
 # ==========================================================
 while running:
-    dt = clock.tick(30) / 1000.0
     start = time.perf_counter()
+    dt = clock.tick(30) / 1000.0
     for event in pygame.event.get(): ######## Input logic
         if event.type == pygame.QUIT:
             running = False
@@ -790,9 +790,9 @@ while running:
         score_surface1L.blit(score_coverL, (0,0))
         score_surface1R.blit(score_coverR, (0,0))
         score_text_1 = scoreFont.render(str(current_score_1), True, RED)
-        score_height = 188 * SCALE_FACTOR - (score_text_1.get_height() // 2)
-        score_surface1L.blit(score_text_1, (3 * SCALE_FACTOR, score_height))
-        score_surface1R.blit(score_text_1, (149 * SCALE_FACTOR - score_text_1.get_width(), score_height))
+        score_height = 94 * SCALE_FACTOR - (score_text_1.get_height() // 2)
+        score_surface1L.blit(score_text_1, (0, score_height))
+        score_surface1R.blit(score_text_1, (152 * SCALE_FACTOR - score_text_1.get_width(), score_height))
         background_surface1.blit(score_surface1L, (88 * SCALE_FACTOR, 41 * SCALE_FACTOR))
         background_surface2.blit(score_surface1R, (BASE_WIDTH//2,41*SCALE_FACTOR))
         score_change = True # Because windsock and score interfere.
@@ -802,9 +802,9 @@ while running:
         score_surface2L.blit(score_coverL, (0,0))
         score_surface2R.blit(score_coverR, (0,0))
         score_text_2 = scoreFont.render(str(current_score_2), True, RED)
-        score_height = 188 * SCALE_FACTOR - (score_text_1.get_height() // 2)
-        score_surface2R.blit(score_text_2, (3 * SCALE_FACTOR, score_height))
-        score_surface2L.blit(score_text_2, ( 149 * SCALE_FACTOR - score_text_2.get_width(), score_height))
+        score_height = 94 * SCALE_FACTOR - (score_text_2.get_height() // 2)
+        score_surface2R.blit(score_text_2, (152 * SCALE_FACTOR - score_text_2.get_width(), score_height))
+        score_surface2L.blit(score_text_2, (0, score_height))
         background_surface1.blit(score_surface2R, (BASE_WIDTH//2,41*SCALE_FACTOR))
         background_surface2.blit(score_surface2L, (88 * SCALE_FACTOR, 41 * SCALE_FACTOR))
         score_change = True # Because windsock and score interfere.
@@ -812,6 +812,7 @@ while running:
         reset1 = False # To reset while avoiding race condition
 
 
+    # Wind
     air_phase = controller.airPhase
     air_owner = controller.airOwner
 
@@ -822,20 +823,20 @@ while running:
             AIR_DIRECTION = "right" if air_owner == 1 else "left"
             show_air = True
             
+            background_surface1.blit(score_surface1L, (88 * SCALE_FACTOR, 41 * SCALE_FACTOR))
+            background_surface2.blit(score_surface1R, (BASE_WIDTH//2,41*SCALE_FACTOR))
+                
+            background_surface1.blit(score_surface2R, (BASE_WIDTH//2,41*SCALE_FACTOR))
+            background_surface2.blit(score_surface2L, (88 * SCALE_FACTOR, 41 * SCALE_FACTOR))
+            
             if air_owner == 1:
                 background_surface1.blit(windsock_frames[frame_index],(178*SCALE_FACTOR, 168*SCALE_FACTOR))
                 background_surface2.blit(windsock_frames1[frame_index], (178*SCALE_FACTOR, 168*SCALE_FACTOR))
             else:
                 background_surface2.blit(windsock_frames[frame_index],(178*SCALE_FACTOR, 168*SCALE_FACTOR))
                 background_surface1.blit(windsock_frames1[frame_index],(178*SCALE_FACTOR, 168*SCALE_FACTOR))
-                
-            score_height = (BASE_HEIGHT // 2) - (score_text_1.get_height() // 2)
-            background_surface1.blit(score_text_1, (BASE_WIDTH // 6, score_height))
-            background_surface2.blit(score_text_1, (BASE_WIDTH - (BASE_WIDTH // 6 + score_text_1.get_width()), score_height))
-            score_height = (BASE_HEIGHT // 2) - (score_text_2.get_height() // 2)
-            background_surface1.blit(score_text_2, (BASE_WIDTH - (BASE_WIDTH // 6 + score_text_2.get_width()), score_height))
-            background_surface2.blit(score_text_2, (BASE_WIDTH // 6, score_height))
-
+            
+            
             last_windsock_frame_index = frame_index
             score_change = False # Because windsock and score interfere.
     else:
@@ -846,10 +847,8 @@ while running:
             last_windsock_frame_index = -1
         show_air = False
 
-
     render_surface.blit(background_surface1, (0, 0))
     render_surface0.blit(background_surface2, (0, 0))
-    
     
     if show_air:
         for particle in wind:
@@ -866,7 +865,7 @@ while running:
     # Draw both halves into spanning window
     surface.blit(scaled_left, (0, 0))
     surface.blit(scaled_right, (LEFT_WIDTH, 0))
-    print(time.perf_counter() - start)
     window.flip()
+    print(time.perf_counter() - start)
 
 pygame.quit()
