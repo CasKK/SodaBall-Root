@@ -802,9 +802,9 @@ while running:
         score_surface2L.blit(score_coverL, (0,0))
         score_surface2R.blit(score_coverR, (0,0))
         score_text_2 = scoreFont.render(str(current_score_2), True, RED)
-        score_height = (BASE_HEIGHT // 2) - (score_text_2.get_height() // 2)
+        score_height = 188 * SCALE_FACTOR - (score_text_1.get_height() // 2)
         score_surface2R.blit(score_text_2, (3 * SCALE_FACTOR, score_height))
-        score_surface2L.blit(score_text_2, ( 149 * SCALE_FACTOR - score_text_1.get_width(), score_height))
+        score_surface2L.blit(score_text_2, ( 149 * SCALE_FACTOR - score_text_2.get_width(), score_height))
         background_surface1.blit(score_surface2R, (BASE_WIDTH//2,41*SCALE_FACTOR))
         background_surface2.blit(score_surface2L, (88 * SCALE_FACTOR, 41 * SCALE_FACTOR))
         score_change = True # Because windsock and score interfere.
