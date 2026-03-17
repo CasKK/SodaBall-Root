@@ -317,42 +317,20 @@ class ArduinoNode:
 # ==========================================================
 
 class AudioManager:
-    """
-    Manages background music and per-team goal celebration sounds.
-
-    Directory layout expected under BASE_DIR/Audio/:
-        Audio/
-            background.ogg          ← looping ambient track
-            team1/
-                goal_1.ogg
-                goal_2.ogg
-                ...                 ← any number of clips
-            team2/
-                goal_1.ogg
-                goal_2.ogg
-                ...
-
-    All clips should be OGG Vorbis for best performance on Pi.
-    MP3 also works for background.ogg if you prefer.
-    """
-
-    MUSIC_NORMAL_VOL  = 0.7    # background volume during normal play
-    MUSIC_DUCKED_VOL  = 0.12   # background volume while celebration plays
-    CELEBRATE_VOL     = 1.0    # celebration clip volume
-    FADE_IN_RATE      = 0.6    # volume units per second when fading back in
-    CELEBRATE_CHANNEL = 1      # pygame mixer channel reserved for celebrations
+    MUSIC_NORMAL_VOL  = 0.7
+    MUSIC_DUCKED_VOL  = 0.12
+    CELEBRATE_VOL     = 1.0
+    FADE_IN_RATE      = 0.6
+    CELEBRATE_CHANNEL = 1
 
     def __init__(self, base_dir: Path):
-        # pygame.mixer must be initialised before this is created
         pygame.mixer.set_num_channels(8)
-
         self._channel = pygame.mixer.Channel(self.CELEBRATE_CHANNEL)
         self._celebrating = False
 
-        # ── Load celebration pools ──────────────────────────────────────────
+        # ── Celebration pools (unchanged) ────────────────────────────────────
         self._pools: dict[int, list[pygame.mixer.Sound]] = {}
-        self._last_played: dict[int, int] = {}   # avoid immediate repeat
-
+        self._last_played: dict[int, int] = {}
         for team_id in (1, 2):
             folder = base_dir / "Audio" / f"team{team_id}"
             sounds = []
@@ -366,27 +344,60 @@ class AudioManager:
                             print(f"[AUDIO] Loaded team{team_id}: {f.name}")
                         except Exception as e:
                             print(f"[AUDIO] Failed to load {f}: {e}")
-            else:
-                print(f"[AUDIO] Warning: no folder at {folder}")
             self._pools[team_id] = sounds
             self._last_played[team_id] = -1
 
-        # ── Load & start background music ───────────────────────────────────
-        bg_path = base_dir / "Audio" / "background.ogg"
-        if not bg_path.exists():
-            # Fallback: try .mp3
-            bg_path = base_dir / "Audio" / "background.mp3"
+        # ── Background music playlist ─────────────────────────────────────────
+        bg_folder = base_dir / "Audio" / "background"
+        self._playlist: list[Path] = []
+        if bg_folder.exists():
+            self._playlist = [
+                f for f in bg_folder.iterdir()
+                if f.suffix.lower() in (".ogg", ".wav", ".mp3")
+            ]
+        
+        self._playlist_order: list[Path] = []  # reshuffled copy, consumed as a queue
+        self._current_track: Path | None = None
 
-        if bg_path.exists():
-            try:
-                pygame.mixer.music.load(str(bg_path))
-                pygame.mixer.music.set_volume(self.MUSIC_NORMAL_VOL)
-                pygame.mixer.music.play(-1)
-                print(f"[AUDIO] Background music started: {bg_path.name}")
-            except Exception as e:
-                print(f"[AUDIO] Failed to load background music: {e}")
+        if self._playlist:
+            self._start_next_track()
         else:
-            print("[AUDIO] Warning: no background.ogg or background.mp3 found in Audio/")
+            print("[AUDIO] Warning: no background tracks found in Audio/background/")
+
+        # Tell pygame to call _on_track_end when a music track finishes
+        pygame.mixer.music.set_endevent(pygame.USEREVENT + 1)
+        self._music_end_event = pygame.USEREVENT + 1
+
+    def _reshuffle(self):
+        """Refill the queue with a reshuffled playlist, avoiding immediate repeat."""
+        new_order = self._playlist.copy()
+        random.shuffle(new_order)
+        # If the last track we played would come up first again, swap it back
+        if (self._current_track is not None
+                and len(new_order) > 1
+                and new_order[0] == self._current_track):
+            new_order[0], new_order[1] = new_order[1], new_order[0]
+        self._playlist_order = new_order
+
+    def _start_next_track(self):
+        if not self._playlist_order:
+            self._reshuffle()
+
+        track = self._playlist_order.pop(0)
+        self._current_track = track
+        try:
+            pygame.mixer.music.load(str(track))
+            pygame.mixer.music.set_volume(self.MUSIC_NORMAL_VOL)
+            pygame.mixer.music.play()
+            print(f"[AUDIO] Now playing: {track.name}")
+        except Exception as e:
+            print(f"[AUDIO] Failed to play {track.name}: {e}")
+            self._start_next_track()  # skip broken file and try next
+
+    def handle_pygame_event(self, event):
+        """Call this from your pygame event loop with every event."""
+        if event.type == self._music_end_event:
+            self._start_next_track()
 
     def play_goal(self, team_id: int):
         """
@@ -886,6 +897,8 @@ while running:
                     reset = True
 
     # ── Audio: drain pending celebration flag (main thread only) ─────────────
+    audio.handle_pygame_event(event)
+    
     with controller._celebration_lock:
         pending_team = controller.pending_celebration
         controller.pending_celebration = None
