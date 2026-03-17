@@ -626,8 +626,8 @@ profile_pictures = [
 ]
 
 # Fonts
-font = pygame.font.Font(asset_path("Press_Start_2P/PressStart2P-Regular.ttf"), 60)
-scoreFont = pygame.font.Font(asset_path("digital_7/digital-7.ttf"), 500)
+font = pygame.font.Font(asset_path("Press_Start_2P/PressStart2P-Regular.ttf"), 30*SCALE_FACTOR)
+scoreFont = pygame.font.Font(asset_path("digital_7/digital-7.ttf"), 250*SCALE_FACTOR)
 
 RED = (220, 0, 0)
 
@@ -753,10 +753,10 @@ while running:
         background_surface2.blit(bane_img, (0, 0))
 
         # Profiles
-        background_surface1.blit(profile_pictures[profile_pictures_number1], (10, 195))
-        background_surface1.blit(profile_pictures[1], (BASE_WIDTH - profile_pictures[1].get_width() - 10, 195))
-        background_surface2.blit(profile_pictures[profile_pictures_number1], (BASE_WIDTH - profile_pictures[1].get_width() - 10, 195))
-        background_surface2.blit(profile_pictures[1], (10, 195))
+        background_surface1.blit(profile_pictures[profile_pictures_number1], (5*SCALE_FACTOR, 98*SCALE_FACTOR))
+        background_surface1.blit(profile_pictures[1], (BASE_WIDTH - profile_pictures[1].get_width() - 5*SCALE_FACTOR, 98*SCALE_FACTOR))
+        background_surface2.blit(profile_pictures[profile_pictures_number1], (BASE_WIDTH - profile_pictures[1].get_width() - 5*SCALE_FACTOR, 98*SCALE_FACTOR))
+        background_surface2.blit(profile_pictures[1], (5*SCALE_FACTOR, 98*SCALE_FACTOR))
 
         reset = False
         reset1 = True # To finish reset while avoiding race condition.
@@ -770,7 +770,7 @@ while running:
         background_surface1.blit(money_cover, (2*SCALE_FACTOR,0))
         background_surface2.blit(money_cover, (BASE_WIDTH - money_cover.get_width() - 2*SCALE_FACTOR,0))
         background_surface1.blit(wind_img1,(int(BASE_WIDTH/12), -20))
-        background_surface2.blit(wind_img,(int(BASE_WIDTH - BASE_WIDTH/12 - wind_img.get_width()), -20))
+        background_surface2.blit(wind_img,(int(BASE_WIDTH - BASE_WIDTH/12 - wind_img.get_width()), -10*SCALE_FACTOR))
         money_text_1 = font.render(f"{int(controller.money[1]/20)}", True, RED)
         background_surface1.blit(money_text_1, (int(BASE_WIDTH/50), 15))
         background_surface2.blit(money_text_1,(int(BASE_WIDTH - (BASE_WIDTH/50 + money_text_1.get_width())), 15))
@@ -780,7 +780,7 @@ while running:
         background_surface2.blit(money_cover, (2*SCALE_FACTOR,0))
         background_surface1.blit(money_cover, (BASE_WIDTH - money_cover.get_width() - 2*SCALE_FACTOR,0))
         background_surface2.blit(wind_img1,(int(BASE_WIDTH/12), -20))
-        background_surface1.blit(wind_img,(int(BASE_WIDTH - BASE_WIDTH/12 - wind_img.get_width()), -20))
+        background_surface1.blit(wind_img,(int(BASE_WIDTH - BASE_WIDTH/12 - wind_img.get_width()), -10*SCALE_FACTOR))
         money_text_2 = font.render(f"{int(controller.money[2]/20)}", True, RED)
         background_surface1.blit(money_text_2,(int(BASE_WIDTH - (BASE_WIDTH/50 + money_text_2.get_width())), 15))
         background_surface2.blit(money_text_2, (int(BASE_WIDTH/50), 15))
