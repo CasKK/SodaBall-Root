@@ -558,6 +558,7 @@ def asset_path(*parts):
 # ---------------------------
 BASE_WIDTH = 960
 BASE_HEIGHT = 540
+SCALE_FACTOR = 2
 
 # Wind configuration
 WIND_COUNT = 200
@@ -611,32 +612,27 @@ RED = (220, 0, 0)
 # ---------------------------
 # Assets
 # ---------------------------
-wind_img = pygame.transform.scale(
+
+bane_img = pygame.transform.scale_by(
+    pygame.image.load(asset_path("Bane.png")).convert(),SCALE_FACTOR)
+
+money_cover = pygame.transform.scale_by(
+    pygame.image.load(asset_path("moneycover.png")).convert(), SCALE_FACTOR)
+
+score_coverL = pygame.transform.scale_by(
+    pygame.image.load(asset_path("scorecoverL.png")).convert(), SCALE_FACTOR)
+score_coverR = pygame.transform.scale_by(
+    pygame.image.load(asset_path("scorecoverR.png")).convert(), SCALE_FACTOR)
+
+wind_img = pygame.transform.scale_by(
     pygame.image.load(asset_path("Wind.png")).convert_alpha(),
-    (128, 128)
+    (2*SCALE_FACTOR, 2*SCALE_FACTOR)
 )
 wind_img1 = pygame.transform.flip(wind_img, True, False)
 
-bane_img = pygame.transform.scale(
-    pygame.image.load(asset_path("Bane.png")).convert(),
-(BASE_WIDTH, BASE_HEIGHT)
-)
-money_coverL = pygame.transform.scale_by(
-    pygame.image.load(asset_path("moneycover.png")).convert(), 2)
-money_coverR = pygame.transform.flip(money_coverL, True, False)
-
-score_coverL = pygame.transform.scale_by(
-    pygame.image.load(asset_path("scorecoverL.png")).convert(), 2)
-score_coverR = pygame.transform.scale_by(
-    pygame.image.load(asset_path("scorecoverR.png")).convert(), 2)
-
 windsock_frames = [
-    pygame.transform.scale(
-        pygame.image.load(asset_path(f"pixilart_windsock/windsock_{i+1}.png")).convert(),
-        (248, 204)
-    )
-    for i in range(4)
-]
+    pygame.transform.scale_by(pygame.image.load(asset_path(f"pixilart_windsock/windsock_{i+1}.png")).convert_alpha(),SCALE_FACTOR)
+    for i in range(4)]
 windsock_frames1 = [pygame.transform.flip(f, True, False) for f in windsock_frames]
 
 profile_pictures = [
@@ -762,8 +758,8 @@ while running:
     current_money_2 = int(controller.money[2])
     
     if current_money_1 != last_money_1 or reset1:
-        background_surface1.blit(money_coverL, (0,0))
-        background_surface2.blit(money_coverR, (BASE_WIDTH - money_coverR.get_width(),0))
+        background_surface1.blit(money_cover, (2*SCALE_FACTOR,0))
+        background_surface2.blit(money_cover, (BASE_WIDTH - money_cover.get_width() - 2*SCALE_FACTOR,0))
         background_surface1.blit(wind_img1,(int(BASE_WIDTH/12), -20))
         background_surface2.blit(wind_img,(int(BASE_WIDTH - BASE_WIDTH/12 - wind_img.get_width()), -20))
         money_text_1 = font.render(f"{int(controller.money[1]/20)}", True, RED)
@@ -772,8 +768,8 @@ while running:
         last_money_1 = current_money_1
     
     if current_money_2 != last_money_2 or reset1:
-        background_surface2.blit(money_coverR, (0,0))
-        background_surface1.blit(money_coverL, (BASE_WIDTH - money_coverL.get_width(),0))
+        background_surface2.blit(money_cover, (2*SCALE_FACTOR,0))
+        background_surface1.blit(money_cover, (BASE_WIDTH - money_cover.get_width() - 2*SCALE_FACTOR,0))
         background_surface2.blit(wind_img1,(int(BASE_WIDTH/12), -20))
         background_surface1.blit(wind_img,(int(BASE_WIDTH - BASE_WIDTH/12 - wind_img.get_width()), -20))
         money_text_2 = font.render(f"{int(controller.money[2]/20)}", True, RED)
@@ -787,8 +783,8 @@ while running:
     current_score_2 = int(controller.score[2])
 
     if current_score_1 != last_score_1 or reset1:
-        background_surface2.blit(score_coverL, (176,82))
-        background_surface1.blit(score_coverR, (574,82))
+        background_surface1.blit(score_coverL, (88*SCALE_FACTOR,41*SCALE_FACTOR))
+        background_surface2.blit(score_coverR, (287*SCALE_FACTOR,41*SCALE_FACTOR))
         score_text_1 = scoreFont.render(str(current_score_1), True, RED)
         score_height = (BASE_HEIGHT // 2) - (score_text_1.get_height() // 2)
         background_surface1.blit(score_text_1, (BASE_WIDTH // 6, score_height))
@@ -797,6 +793,8 @@ while running:
         last_score_1 = current_score_1
 
     if current_score_2 != last_score_2 or reset1:
+        background_surface2.blit(score_coverL, (88*SCALE_FACTOR,41*SCALE_FACTOR))
+        background_surface1.blit(score_coverR, (287*SCALE_FACTOR,41*SCALE_FACTOR))
         score_text_2 = scoreFont.render(str(current_score_2), True, RED)
         score_height = (BASE_HEIGHT // 2) - (score_text_2.get_height() // 2)
         background_surface1.blit(score_text_2, (BASE_WIDTH - (BASE_WIDTH // 6 + score_text_2.get_width()), score_height))
@@ -817,11 +815,11 @@ while running:
             show_air = True
             
             if air_owner == 1:
-                background_surface1.blit(windsock_frames[frame_index],(356, 330))
-                background_surface2.blit(windsock_frames1[frame_index], (356, 330))
+                background_surface1.blit(windsock_frames[frame_index],(178*SCALE_FACTOR, 165*SCALE_FACTOR))
+                background_surface2.blit(windsock_frames1[frame_index], (178*SCALE_FACTOR, 165*SCALE_FACTOR))
             else:
-                background_surface2.blit(windsock_frames[frame_index],(356, 330))
-                background_surface1.blit(windsock_frames1[frame_index],(356, 330))
+                background_surface2.blit(windsock_frames[frame_index],(178*SCALE_FACTOR, 165*SCALE_FACTOR))
+                background_surface1.blit(windsock_frames1[frame_index],(178*SCALE_FACTOR, 165*SCALE_FACTOR))
             last_windsock_frame_index = frame_index
             score_change = False # Because windsock and score interfere.
     else:
