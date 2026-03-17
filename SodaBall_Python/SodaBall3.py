@@ -579,15 +579,15 @@ window = Window(
 window.borderless = True
 surface = window.get_surface()
 
-SCALE_FACTOR = 1
-if LEFT_HEIGHT == 270:
+SCALE_FACTOR = 2
+# if LEFT_HEIGHT == 270:
+#     LAST_SCALE_FACTOR = 1
+if LEFT_HEIGHT == 540:
     LAST_SCALE_FACTOR = 1
-elif LEFT_HEIGHT == 540:
-    LAST_SCALE_FACTOR = 2
 elif LEFT_HEIGHT == 1080:
-    LAST_SCALE_FACTOR = 4
+    LAST_SCALE_FACTOR = 2
 elif LEFT_HEIGHT == 2160:
-    LAST_SCALE_FACTOR = 8
+    LAST_SCALE_FACTOR = 4
 else:
     raise RuntimeError("Unsupported resolution. Suppoorted resolutions: 540p, 1080p, 4k.", desktop_sizes)
 
