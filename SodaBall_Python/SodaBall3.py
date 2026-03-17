@@ -772,8 +772,8 @@ while running:
         last_money_1 = current_money_1
     
     if current_money_2 != last_money_2 or reset1:
-        background_surface2.blit(money_coverL, (0,0))
-        background_surface1.blit(money_coverR, (BASE_WIDTH - money_coverR.get_width(),0))
+        background_surface2.blit(money_coverR, (0,0))
+        background_surface1.blit(money_coverL, (BASE_WIDTH - money_coverL.get_width(),0))
         background_surface2.blit(wind_img1,(int(BASE_WIDTH/12), -20))
         background_surface1.blit(wind_img,(int(BASE_WIDTH - BASE_WIDTH/12 - wind_img.get_width()), -20))
         money_text_2 = font.render(f"{int(controller.money[2]/20)}", True, RED)
