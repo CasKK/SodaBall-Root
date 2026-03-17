@@ -602,7 +602,7 @@ render_surface0 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
 
 # Fonts
 font = pygame.font.Font(asset_path("Press_Start_2P/PressStart2P-Regular.ttf"), 60)
-font1 = pygame.font.Font(asset_path("digital_7/digital-7.ttf"), 500)
+scoreFont = pygame.font.Font(asset_path("digital_7/digital-7.ttf"), 500)
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
@@ -619,12 +619,20 @@ wind_img1 = pygame.transform.flip(wind_img, True, False)
 
 bane_img = pygame.transform.scale(
     pygame.image.load(asset_path("Bane.png")).convert(),
-    (BASE_WIDTH, BASE_HEIGHT)
+(BASE_WIDTH, BASE_HEIGHT)
 )
+money_coverL = pygame.transform.scale_by(
+    pygame.image.load(asset_path("moneycover.png")).convert(), 2)
+money_coverR = pygame.transform.flip(money_coverL)
+
+score_coverL = pygame.transform.scale_by(
+    pygame.image.load(asset_path("scorecoverL.png")).convert(), 2)
+score_coverR = pygame.transform.scale_by(
+    pygame.image.load(asset_path("scorecoverR.png")).convert(), 2)
 
 windsock_frames = [
     pygame.transform.scale(
-        pygame.image.load(asset_path(f"pixilart_windsock/windsock_{i+1}.png")).convert_alpha(),
+        pygame.image.load(asset_path(f"pixilart_windsock/windsock_{i+1}.png")).convert(),
         (248, 204)
     )
     for i in range(4)
@@ -682,13 +690,13 @@ wind0 = [WindEffect(True) for _ in range(WIND_COUNT)]
 # ---------------------------
 last_score_1 = None
 last_score_2 = None
-score_surface_1 = None
-score_surface_2 = None
+score_text_1 = None
+score_text_2 = None
 last_money_1 = None
 last_money_2 = None
 money_text_1 = None
 money_text_2 = None
-background_surface = None
+#background_surface = None
 background_surface1 = None
 background_surface2 = None
 
@@ -700,6 +708,8 @@ profile_pictures_number1 = 0
 last_windsock_frame_index = -1
 
 reset = True
+windsockReset = True
+score_change = False
 
 button_rect = pygame.Rect(10 + 920, 195, 600, 600)
 
@@ -730,16 +740,12 @@ while running:
     # ---------------------------
     if reset:
         if debug: print("Base blit")
-        background_surface = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
+        #background_surface = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
         background_surface1 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
         background_surface2 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
-        background_surface.blit(bane_img, (0, 0))
-        background_surface.blit(wind_img,
-            (int(BASE_WIDTH - BASE_WIDTH/12 - wind_img.get_width()), -20))
-        background_surface.blit(wind_img1,
-            (int(BASE_WIDTH/12), -20))
-        background_surface1.blit(background_surface, (0, 0))
-        background_surface2.blit(background_surface, (0, 0))
+        #background_surface.blit(bane_img, (0, 0))
+        background_surface1.blit(bane_img, (0, 0))
+        background_surface2.blit(bane_img, (0, 0))
 
         # Profiles
         background_surface1.blit(profile_pictures[profile_pictures_number1], (10, 195))
@@ -748,84 +754,89 @@ while running:
         background_surface2.blit(profile_pictures[1], (10, 195))
 
         reset = False
+        reset1 = True # To finish reset while avoiding race condition.
 
-    render_surface.blit(background_surface1, (0, 0))
-    render_surface0.blit(background_surface2, (0, 0))
 
     # Money
     current_money_1 = int(controller.money[1])
     current_money_2 = int(controller.money[2])
     
-    if current_money_1 != last_money_1:
+    if current_money_1 != last_money_1 or reset1:
+        background_surface1.blit(money_coverL, (0,0))
+        background_surface2.blit(money_coverR, (BASE_WIDTH - money_coverR.get_width,0))
+        background_surface1.blit(wind_img1,(int(BASE_WIDTH/12), -20))
+        background_surface2.blit(wind_img,(int(BASE_WIDTH - BASE_WIDTH/12 - wind_img.get_width()), -20))
         money_text_1 = font.render(f"{int(controller.money[1]/20)}", True, RED)
+        background_surface1.blit(money_text_1, (int(BASE_WIDTH/50), 15))
+        background_surface2.blit(money_text_1,(int(BASE_WIDTH - (BASE_WIDTH/50 + money_text_1.get_width())), 15))
         last_money_1 = current_money_1
     
-    if current_money_2 != last_money_2:
+    if current_money_2 != last_money_2 or reset1:
+        background_surface2.blit(money_coverL, (0,0))
+        background_surface1.blit(money_coverR, (BASE_WIDTH - money_coverR.get_width,0))
+        background_surface2.blit(wind_img1,(int(BASE_WIDTH/12), -20))
+        background_surface1.blit(wind_img,(int(BASE_WIDTH - BASE_WIDTH/12 - wind_img.get_width()), -20))
         money_text_2 = font.render(f"{int(controller.money[2]/20)}", True, RED)
+        background_surface1.blit(money_text_2,(int(BASE_WIDTH - (BASE_WIDTH/50 + money_text_2.get_width())), 15))
+        background_surface2.blit(money_text_2, (int(BASE_WIDTH/50), 15))
         last_money_2 = current_money_2
 
-    render_surface.blit(money_text_1, (int(BASE_WIDTH/50), 15))
-    render_surface.blit(money_text_2,(int(BASE_WIDTH - (BASE_WIDTH/50 + money_text_2.get_width())), 15))
-    render_surface0.blit(money_text_1,(int(BASE_WIDTH - (BASE_WIDTH/50 + money_text_1.get_width())), 15))
-    render_surface0.blit(money_text_2, (int(BASE_WIDTH/50), 15))
-
+    
     # Score
     current_score_1 = int(controller.score[1])
     current_score_2 = int(controller.score[2])
 
-    if current_score_1 != last_score_1:
-        score_surface_1 = font1.render(str(current_score_1), True, RED)
+    if current_score_1 != last_score_1 or reset1:
+        background_surface2.blit(score_coverL, (176,82))
+        background_surface1.blit(score_coverR, (574,82))
+        score_text_1 = scoreFont.render(str(current_score_1), True, RED)
+        score_height = (BASE_HEIGHT // 2) - (score_text_1.get_height() // 2)
+        background_surface1.blit(score_text_1, (BASE_WIDTH // 6, score_height))
+        background_surface2.blit(score_text_1, (BASE_WIDTH - (BASE_WIDTH // 6 + score_text_1.get_width()), score_height))
+        score_change = True # Because windsock and score interfere.
         last_score_1 = current_score_1
 
-    if current_score_2 != last_score_2:
-        score_surface_2 = font1.render(str(current_score_2), True, RED)
+    if current_score_2 != last_score_2 or reset1:
+        score_text_2 = scoreFont.render(str(current_score_2), True, RED)
+        score_height = (BASE_HEIGHT // 2) - (score_text_2.get_height() // 2)
+        background_surface1.blit(score_text_2, (BASE_WIDTH - (BASE_WIDTH // 6 + score_text_2.get_width()), score_height))
+        background_surface2.blit(score_text_2, (BASE_WIDTH // 6, score_height))
+        score_change = True # Because windsock and score interfere.
         last_score_2 = current_score_2
+        reset1 = False # To reset while avoiding race condition
 
-    score_height = (BASE_HEIGHT // 2) - (score_surface_1.get_height() // 2)
 
-    render_surface.blit(score_surface_1, (BASE_WIDTH // 6, score_height))
-    render_surface.blit(score_surface_2, (BASE_WIDTH - (BASE_WIDTH // 6 + score_surface_2.get_width()), score_height))
-    render_surface0.blit(score_surface_1, (BASE_WIDTH - (BASE_WIDTH // 6 + score_surface_1.get_width()), score_height))
-    render_surface0.blit(score_surface_2, (BASE_WIDTH // 6, score_height))
-    
-    
-
-    # Windsock
     air_phase = controller.airPhase
     air_owner = controller.airOwner
 
     if air_phase != "IDLE":
-        AIR_DIRECTION = "right" if air_owner == 1 else "left"
-        show_air = True
         frame_index = (pygame.time.get_ticks() // 100) % len(windsock_frames)
-        if frame_index != last_windsock_frame_index:
-            reset = True
+        if frame_index != last_windsock_frame_index or score_change:
+        # Windsock
+            AIR_DIRECTION = "right" if air_owner == 1 else "left"
+            show_air = True
+            
             if air_owner == 1:
-                background_surface1.blit(
-                    windsock_frames[frame_index],
-                    (BASE_WIDTH//2 - windsock_frames[0].get_width()//2,
-                    BASE_HEIGHT - windsock_frames[0].get_height())
-                )
-                background_surface2.blit(
-                    windsock_frames1[frame_index],
-                    (BASE_WIDTH//2 - windsock_frames1[0].get_width()//2,
-                    BASE_HEIGHT - windsock_frames1[0].get_height())
-                )
+                background_surface1.blit(windsock_frames[frame_index],(356, 330))
+                background_surface2.blit(windsock_frames1[frame_index], (356, 330))
             else:
-                background_surface2.blit(
-                    windsock_frames[frame_index],
-                    (BASE_WIDTH//2 - windsock_frames[0].get_width()//2,
-                    BASE_HEIGHT - windsock_frames[0].get_height())
-                )
-                background_surface1.blit(
-                    windsock_frames1[frame_index],
-                    (BASE_WIDTH//2 - windsock_frames1[0].get_width()//2,
-                    BASE_HEIGHT - windsock_frames1[0].get_height())
-                )
-        last_windsock_frame_index = frame_index
+                background_surface2.blit(windsock_frames[frame_index],(356, 330))
+                background_surface1.blit(windsock_frames1[frame_index],(356, 330))
+            last_windsock_frame_index = frame_index
+            score_change = False # Because windsock and score interfere.
     else:
+        if last_windsock_frame_index != -1:
+            print("place")
+            #blit empty windsock backbround or reset
+            reset = True
+            last_windsock_frame_index = -1
         show_air = False
 
+
+    render_surface.blit(background_surface1, (0, 0))
+    render_surface0.blit(background_surface2, (0, 0))
+    
+    
     if show_air:
         for particle in wind:
             particle.update(dt)
