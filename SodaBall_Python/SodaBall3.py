@@ -579,11 +579,11 @@ window = Window(
 window.borderless = True
 surface = window.get_surface()
 
-if LEFT_WIDTH == 540:
+if LEFT_HEIGHT == 540:
     SCALE_FACTOR = 1
-elif LEFT_WIDTH == 1080:
+elif LEFT_HEIGHT == 1080:
     SCALE_FACTOR = 2
-elif LEFT_WIDTH == 3840:
+elif LEFT_HEIGHT == 2160:
     SCALE_FACTOR = 4
 else:
     raise RuntimeError("Unsupported resolution. Suppoorted resolutions: 540p, 1080p, 4k.", desktop_sizes)
@@ -620,7 +620,7 @@ windsock_frames1 = [pygame.transform.flip(f, True, False) for f in windsock_fram
 profile_pictures = [
     pygame.transform.scale(
         pygame.image.load(asset_path(f"Profiles/profile_img_{i+1}.jpg")).convert_alpha(),
-        (150, 150)
+        (75*SCALE_FACTOR, 75*SCALE_FACTOR)
     )
     for i in range(2)
 ]
@@ -769,21 +769,21 @@ while running:
     if current_money_1 != last_money_1 or reset1:
         background_surface1.blit(money_cover, (2*SCALE_FACTOR,0))
         background_surface2.blit(money_cover, (BASE_WIDTH - money_cover.get_width() - 2*SCALE_FACTOR,0))
-        background_surface1.blit(wind_img1,(int(BASE_WIDTH/12), -20))
+        background_surface1.blit(wind_img1,(int(BASE_WIDTH/12), -10*SCALE_FACTOR))
         background_surface2.blit(wind_img,(int(BASE_WIDTH - BASE_WIDTH/12 - wind_img.get_width()), -10*SCALE_FACTOR))
         money_text_1 = font.render(f"{int(controller.money[1]/20)}", True, RED)
-        background_surface1.blit(money_text_1, (int(BASE_WIDTH/50), 15))
-        background_surface2.blit(money_text_1,(int(BASE_WIDTH - (BASE_WIDTH/50 + money_text_1.get_width())), 15))
+        background_surface1.blit(money_text_1, (int(BASE_WIDTH/50), 8*SCALE_FACTOR))
+        background_surface2.blit(money_text_1,(int(BASE_WIDTH - (BASE_WIDTH/50 + money_text_1.get_width())), 8*SCALE_FACTOR))
         last_money_1 = current_money_1
     
     if current_money_2 != last_money_2 or reset1:
         background_surface2.blit(money_cover, (2*SCALE_FACTOR,0))
         background_surface1.blit(money_cover, (BASE_WIDTH - money_cover.get_width() - 2*SCALE_FACTOR,0))
-        background_surface2.blit(wind_img1,(int(BASE_WIDTH/12), -20))
+        background_surface2.blit(wind_img1,(int(BASE_WIDTH/12), -10*SCALE_FACTOR))
         background_surface1.blit(wind_img,(int(BASE_WIDTH - BASE_WIDTH/12 - wind_img.get_width()), -10*SCALE_FACTOR))
         money_text_2 = font.render(f"{int(controller.money[2]/20)}", True, RED)
-        background_surface1.blit(money_text_2,(int(BASE_WIDTH - (BASE_WIDTH/50 + money_text_2.get_width())), 15))
-        background_surface2.blit(money_text_2, (int(BASE_WIDTH/50), 15))
+        background_surface1.blit(money_text_2,(int(BASE_WIDTH - (BASE_WIDTH/50 + money_text_2.get_width())), 8*SCALE_FACTOR))
+        background_surface2.blit(money_text_2, (int(BASE_WIDTH/50), 8*SCALE_FACTOR))
         last_money_2 = current_money_2
 
     
