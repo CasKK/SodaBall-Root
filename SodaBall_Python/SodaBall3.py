@@ -553,22 +553,7 @@ BASE_DIR = Path(__file__).resolve().parent
 def asset_path(*parts):
     return BASE_DIR.joinpath("Figures_and_Fonts", *parts)
 
-# ---------------------------
-# Base resolution
-# ---------------------------
-BASE_WIDTH = 960
-BASE_HEIGHT = 540
-SCALE_FACTOR = 2
-
-# Wind configuration
-WIND_COUNT = 200
-WIND_SPEED_MIN = 600
-WIND_SPEED_MAX = 1000
-WIND_WIDTH = 20
-WIND_HEIGHT = 4
-AIR_DIRECTION = "right"
-show_air = False
-
+###### Monitor setup ######
 pygame.init()
 
 desktop_sizes = pygame.display.get_desktop_sizes()
@@ -577,7 +562,6 @@ print("Desktop sizes:", desktop_sizes)
 if len(desktop_sizes) < 2:
     raise RuntimeError("Two monitors required for dual display mode.")
 
-# Calculate combined virtual width
 LEFT_WIDTH, LEFT_HEIGHT = desktop_sizes[0]
 RIGHT_WIDTH, RIGHT_HEIGHT = desktop_sizes[1]
 
@@ -595,43 +579,41 @@ window = Window(
 window.borderless = True
 surface = window.get_surface()
 
-# ---------------------------
-# Internal render surface
-# ---------------------------
-render_surface = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
-render_surface0 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
-
-# Fonts
-font = pygame.font.Font(asset_path("Press_Start_2P/PressStart2P-Regular.ttf"), 60)
-scoreFont = pygame.font.Font(asset_path("digital_7/digital-7.ttf"), 500)
-
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-RED = (220, 0, 0)
+if LEFT_WIDTH == 540:
+    SCALE_FACTOR = 1
+elif LEFT_WIDTH == 1080:
+    SCALE_FACTOR = 2
+elif LEFT_WIDTH == 3840:
+    SCALE_FACTOR = 4
+else:
+    raise RuntimeError("Unsupported resolution. Suppoorted resolutions: 540p, 1080p, 4k.", desktop_sizes)
 
 # ---------------------------
 # Assets
 # ---------------------------
 
 bane_img = pygame.transform.scale_by(
-    pygame.image.load(asset_path("Bane.png")).convert(),SCALE_FACTOR)
+    pygame.image.load(asset_path("Bane.png")).convert(),SCALE_FACTOR) # Source image is 480x270
+
+BASE_WIDTH = bane_img.get_width()
+BASE_HEIGHT = bane_img.get_height()
 
 money_cover = pygame.transform.scale_by(
-    pygame.image.load(asset_path("moneycover.png")).convert(), SCALE_FACTOR)
+    pygame.image.load(asset_path("moneycover.png")).convert(), SCALE_FACTOR) # Source image is 236x41
 
 score_coverL = pygame.transform.scale_by(
-    pygame.image.load(asset_path("scorecoverL.png")).convert(), SCALE_FACTOR)
+    pygame.image.load(asset_path("scorecoverL.png")).convert(), SCALE_FACTOR) # Source image is 152x229
 score_coverR = pygame.transform.scale_by(
-    pygame.image.load(asset_path("scorecoverR.png")).convert(), SCALE_FACTOR)
+    pygame.image.load(asset_path("scorecoverR.png")).convert(), SCALE_FACTOR) # Source image is 152x229
 
 wind_img = pygame.transform.scale_by(
-    pygame.image.load(asset_path("Wind.png")).convert_alpha(),
+    pygame.image.load(asset_path("Wind.png")).convert_alpha(), # Source image is 32x32
     (2*SCALE_FACTOR, 2*SCALE_FACTOR)
 )
 wind_img1 = pygame.transform.flip(wind_img, True, False)
 
 windsock_frames = [
-    pygame.transform.scale_by(pygame.image.load(asset_path(f"pixilart_windsock/windsock_{i+1}.png")).convert_alpha(),SCALE_FACTOR)
+    pygame.transform.scale_by(pygame.image.load(asset_path(f"pixilart_windsock/windsock_{i+1}.png")).convert_alpha(),SCALE_FACTOR) # Source image is 123x102
     for i in range(4)]
 windsock_frames1 = [pygame.transform.flip(f, True, False) for f in windsock_frames]
 
@@ -643,9 +625,31 @@ profile_pictures = [
     for i in range(2)
 ]
 
+# Fonts
+font = pygame.font.Font(asset_path("Press_Start_2P/PressStart2P-Regular.ttf"), 60)
+scoreFont = pygame.font.Font(asset_path("digital_7/digital-7.ttf"), 500)
+
+RED = (220, 0, 0)
+
+# ---------------------------
+# Internal render surface
+# ---------------------------
+render_surface = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
+render_surface0 = pygame.Surface((BASE_WIDTH, BASE_HEIGHT))
+
+
 # ---------------------------
 # Wind particles
 # ---------------------------
+# Wind configuration
+WIND_COUNT = 200
+WIND_SPEED_MIN = 300 * SCALE_FACTOR
+WIND_SPEED_MAX = 500 * SCALE_FACTOR
+WIND_WIDTH = 10 * SCALE_FACTOR
+WIND_HEIGHT = 2 * SCALE_FACTOR
+AIR_DIRECTION = "right"
+show_air = False
+
 class WindEffect:
     def __init__(self, mirror=False):
         self.mirror = mirror
@@ -681,6 +685,7 @@ class WindEffect:
 
 wind  = [WindEffect() for _ in range(WIND_COUNT)]
 wind0 = [WindEffect(True) for _ in range(WIND_COUNT)]
+
 # ---------------------------
 # Cached score rendering and more
 # ---------------------------
@@ -828,7 +833,7 @@ while running:
                 
             background_surface1.blit(score_surface2R, (BASE_WIDTH//2,41*SCALE_FACTOR))
             background_surface2.blit(score_surface2L, (88 * SCALE_FACTOR, 41 * SCALE_FACTOR))
-            
+
             if air_owner == 1:
                 background_surface1.blit(windsock_frames[frame_index],(178*SCALE_FACTOR, 168*SCALE_FACTOR))
                 background_surface2.blit(windsock_frames1[frame_index], (178*SCALE_FACTOR, 168*SCALE_FACTOR))
@@ -842,7 +847,7 @@ while running:
     else:
         if last_windsock_frame_index != -1:
             print("place")
-            #blit empty windsock backbround or reset
+            #blit empty windsock backbround (score_surfaceXX) or reset
             reset = True
             last_windsock_frame_index = -1
         show_air = False
@@ -859,8 +864,8 @@ while running:
             particle.draw(render_surface0)
 
     # Scale base render to monitor size
-    scaled_left = pygame.transform.scale(render_surface,(LEFT_WIDTH, LEFT_HEIGHT))
-    scaled_right = pygame.transform.scale(render_surface0,(RIGHT_WIDTH, RIGHT_HEIGHT))
+    scaled_left = pygame.transform.scale_by(render_surface, 2)
+    scaled_right = pygame.transform.scale_by(render_surface0, 2)
 
     # Draw both halves into spanning window
     surface.blit(scaled_left, (0, 0))
