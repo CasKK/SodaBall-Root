@@ -579,12 +579,15 @@ window = Window(
 window.borderless = True
 surface = window.get_surface()
 
-if LEFT_HEIGHT == 540:
-    SCALE_FACTOR = 1
+SCALE_FACTOR = 1
+if LEFT_HEIGHT == 270:
+    LAST_SCALE_FACTOR = 1
+elif LEFT_HEIGHT == 540:
+    LAST_SCALE_FACTOR = 2
 elif LEFT_HEIGHT == 1080:
-    SCALE_FACTOR = 2
+    LAST_SCALE_FACTOR = 4
 elif LEFT_HEIGHT == 2160:
-    SCALE_FACTOR = 4
+    LAST_SCALE_FACTOR = 8
 else:
     raise RuntimeError("Unsupported resolution. Suppoorted resolutions: 540p, 1080p, 4k.", desktop_sizes)
 
@@ -608,7 +611,7 @@ score_coverR = pygame.transform.scale_by(
 
 wind_img = pygame.transform.scale_by(
     pygame.image.load(asset_path("Wind.png")).convert_alpha(), # Source image is 32x32
-    (2*SCALE_FACTOR, 2*SCALE_FACTOR)
+    (2*SCALE_FACTOR, 2*SCALE_FACTOR) # double size to match the screen size of other assets
 )
 wind_img1 = pygame.transform.flip(wind_img, True, False)
 
@@ -864,8 +867,8 @@ while running:
             particle.draw(render_surface0)
 
     # Scale base render to monitor size
-    scaled_left = pygame.transform.scale_by(render_surface, 2)
-    scaled_right = pygame.transform.scale_by(render_surface0, 2)
+    scaled_left = pygame.transform.scale_by(render_surface, LAST_SCALE_FACTOR)
+    scaled_right = pygame.transform.scale_by(render_surface0, LAST_SCALE_FACTOR)
 
     # Draw both halves into spanning window
     surface.blit(scaled_left, (0, 0))
