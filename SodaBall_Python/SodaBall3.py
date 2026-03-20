@@ -336,21 +336,24 @@ class AudioManager:
         # ── Celebration pools ────────────────────────────────────
         self._pools: dict[int, list[pygame.mixer.Sound]] = {}
         self._last_played: dict[int, int] = {}
-        for team_id in (1, 2):
-            folder = base_dir / "Audio" / f"team{team_id}"
-            sounds = []
-            if folder.exists():
-                for f in sorted(folder.iterdir()):
-                    if f.suffix.lower() in (".ogg", ".wav", ".mp3"):
-                        try:
-                            s = pygame.mixer.Sound(str(f))
-                            s.set_volume(self.CELEBRATE_VOL)
-                            sounds.append(s)
-                            print(f"[AUDIO] Loaded team{team_id}: {f.name}")
-                        except Exception as e:
-                            print(f"[AUDIO] Failed to load {f}: {e}")
-            self._pools[team_id] = sounds
-            self._last_played[team_id] = -1
+
+        teams_folder = base_dir / "Audio" / "teams"
+        if teams_folder.exists():
+            for folder in sorted(teams_folder.iterdir()):
+                if folder.is_dir() and folder.name.isdigit():
+                    team_id = int(folder.name)
+                    sounds = []
+                    for f in sorted(folder.iterdir()):
+                        if f.suffix.lower() in (".ogg", ".wav", ".mp3"):
+                            try:
+                                s = pygame.mixer.Sound(str(f))
+                                s.set_volume(self.CELEBRATE_VOL)
+                                sounds.append(s)
+                                print(f"[AUDIO] Loaded team {team_id}: {f.name}")
+                            except Exception as e:
+                                print(f"[AUDIO] Failed to load {f}: {e}")
+                    self._pools[team_id] = sounds
+                    self._last_played[team_id] = -1
 
         # ── Background playlist ───────────────────────────────────────────────
         bg_folder = base_dir / "Audio" / "background"
@@ -449,7 +452,7 @@ class GameController:
         self.score = {1: 0, 2: 0}
         self.money = {1: 0, 2: 0}
         self.nodes = {}
-
+        self.node_team = {1: 1, 2: 2}
         self.airOwner = None
         self.airDuration = 10.0
         self.smokeStartDelay = 1.0
@@ -509,17 +512,19 @@ class GameController:
                 if debug: print("D, +smallCoin")
 
     def handle_goal(self, scoring_node, side):
-        # The team that conceded is scoring_node; the OTHER team celebrates
-        celebrating_team = 2 if scoring_node == 1 else 1
+        celebrating_node = 2 if scoring_node == 1 else 1
+        celebrating_team = self.node_team.get(celebrating_node, celebrating_node)
+
         if scoring_node == 1:
             self.score[2] += 1
         else:
             self.score[1] += 1
 
         if debug:
-            print(f"Goal in node {scoring_node}'s net! Score: {self.score[1]}:{self.score[2]}")
+            print(f"Goal in node {scoring_node}'s net! "
+                f"Score: {self.score[1]}:{self.score[2]} — "
+                f"celebrating IRL team {celebrating_team}")
 
-        # Signal main loop to play audio (thread-safe flag)
         with self._celebration_lock:
             self.pending_celebration = celebrating_team
 
@@ -886,7 +891,7 @@ background_surface2 = None
 clock = pygame.time.Clock()
 running = True
 
-profile_picture_team = [0, 0]
+profile_picture_team = [0, 1]
 last_windsock_frame_index = -1
 
 reset = True
@@ -920,6 +925,7 @@ while running:
                             profile_picture_team[i] += 1
                         else:
                             profile_picture_team[i] = 0
+                        controller.node_team[i+1] = profile_picture_team[i]
                         reset = True
                 for i, rect in enumerate(profile_rects1):
                     if rect.collidepoint(event.pos):
@@ -928,6 +934,7 @@ while running:
                             profile_picture_team[i] += 1
                         else:
                             profile_picture_team[i] = 0
+                        controller.node_team[i+1] = profile_picture_team[i]
                         reset = True
                 for i, rect in enumerate(score_rects):
                     if rect.collidepoint(event.pos):
@@ -957,6 +964,7 @@ while running:
                             profile_picture_team[i] -= 1
                         else:
                             profile_picture_team[i] = len(profile_pictures)-1
+                        controller.node_team[i+1] = profile_picture_team[i]
                         reset = True
                 for i, rect in enumerate(profile_rects1):
                     if rect.collidepoint(event.pos):
@@ -965,6 +973,7 @@ while running:
                             profile_picture_team[i] -= 1
                         else:
                             profile_picture_team[i] = len(profile_pictures)-1
+                        controller.node_team[i+1] = profile_picture_team[i]
                         reset = True
                 for i, rect in enumerate(score_rects):
                     if rect.collidepoint(event.pos):
