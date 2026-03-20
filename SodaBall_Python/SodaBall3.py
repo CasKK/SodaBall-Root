@@ -804,6 +804,7 @@ money_rects1 = [
 
 # Fonts
 font = pygame.font.Font(asset_path("Press_Start_2P/PressStart2P-Regular.ttf"), 30 * SCALE_FACTOR)
+fontSmall = pygame.font.Font(asset_path("Press_Start_2P/PressStart2P-Regular.ttf"), 30 * SCALE_FACTOR // 2)
 scoreFont = pygame.font.Font(asset_path("digital_7/digital-7.ttf"), 250 * SCALE_FACTOR)
 
 RED = (220, 0, 0)
@@ -1044,6 +1045,12 @@ while running:
         background_surface2.blit(money_text_1,
                                  (int(BASE_WIDTH - (BASE_WIDTH / 50 + money_text_1.get_width())),
                                   8 * SCALE_FACTOR))
+        if current_money_1 % 20 == 5:
+            money_text_1_1 = fontSmall.render(f"{int(controller.money[1] / 20)}", True, RED)
+            background_surface1.blit(money_text_1_1, (int(BASE_WIDTH / 40), 12 * SCALE_FACTOR))
+            background_surface2.blit(money_text_1_1,
+                                    (int(BASE_WIDTH - (BASE_WIDTH / 40 + money_text_1.get_width())),
+                                    12 * SCALE_FACTOR))
         last_money_1 = current_money_1
 
     if current_money_2 != last_money_2 or reset1:
@@ -1059,6 +1066,12 @@ while running:
                                  (int(BASE_WIDTH - (BASE_WIDTH / 50 + money_text_2.get_width())),
                                   8 * SCALE_FACTOR))
         background_surface2.blit(money_text_2, (int(BASE_WIDTH / 50), 8 * SCALE_FACTOR))
+        if current_money_1 % 20 == 5:
+            money_text_2_1 = fontSmall.render(f"{int(controller.money[1] / 20)}", True, RED)
+            background_surface1.blit(money_text_2_1,
+                                 (int(BASE_WIDTH - (BASE_WIDTH / 40 + money_text_2.get_width())),
+                                  12 * SCALE_FACTOR))
+            background_surface2.blit(money_text_2_1, (int(BASE_WIDTH / 40), 12 * SCALE_FACTOR))
         last_money_2 = current_money_2
 
     # Score
