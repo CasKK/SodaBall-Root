@@ -780,6 +780,14 @@ score_rects = [
     pygame.Rect(BASE_WIDTH // 2 * LAST_SCALE_FACTOR, 41 * SCALE_FACTOR * LAST_SCALE_FACTOR,
                 score_coverR.get_width() * LAST_SCALE_FACTOR, score_coverR.get_height() * LAST_SCALE_FACTOR),
 ]
+money_rects = [
+    pygame.Rect(2 * SCALE_FACTOR * LAST_SCALE_FACTOR, 0,
+                money_cover.get_width() * LAST_SCALE_FACTOR, money_cover.get_height() * LAST_SCALE_FACTOR),
+    pygame.Rect((BASE_WIDTH - money_cover.get_width() - 2 * SCALE_FACTOR) * LAST_SCALE_FACTOR, 0,
+                money_cover.get_width() * LAST_SCALE_FACTOR, money_cover.get_height() * LAST_SCALE_FACTOR),
+]
+
+
 
 
 # Fonts
@@ -895,23 +903,28 @@ while running:
                 for i, rect in enumerate(profile_rects):
                     if rect.collidepoint(event.pos):
                         print("Button clicked")
-                        if profile_picture_team[i] == len(profile_pictures):
-                            profile_picture_team[i] = 0
-                        else:
+                        if profile_picture_team[i]+1 < len(profile_pictures):
                             profile_picture_team[i] += 1
+                        else:
+                            profile_picture_team[i] = 0
                         reset = True
                 for i, rect in enumerate(profile_rects1):
                     if rect.collidepoint(event.pos):
                         print("Button clicked")
-                        if profile_picture_team[i] == len(profile_pictures):
-                            profile_picture_team[i] = 0
-                        else:
+                        if profile_picture_team[i]+1 < len(profile_pictures):
                             profile_picture_team[i] += 1
+                        else:
+                            profile_picture_team[i] = 0
                         reset = True
                 for i, rect in enumerate(score_rects):
                     if rect.collidepoint(event.pos):
                         print("Button clicked")
                         controller.score[i+1] += 1
+                        reset1 = True
+                for i, rect in enumerate(money_rects):
+                    if rect.collidepoint(event.pos):
+                        print("Button clicked")
+                        controller.money[i+1] += 1
                         reset1 = True
 
     # ── Audio: drain pending celebration flag (main thread only) ─────────────
