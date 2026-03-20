@@ -769,9 +769,9 @@ profile_rects = [
                 profile_pictures[1].get_width() * LAST_SCALE_FACTOR, profile_pictures[1].get_height() * LAST_SCALE_FACTOR),
 ]
 profile_rects1 = [
-    pygame.Rect(5 * SCALE_FACTOR * LAST_SCALE_FACTOR + LEFT_WIDTH, 98 * SCALE_FACTOR * LAST_SCALE_FACTOR + LEFT_WIDTH,
+    pygame.Rect(5 * SCALE_FACTOR * LAST_SCALE_FACTOR + LEFT_WIDTH, 98 * SCALE_FACTOR * LAST_SCALE_FACTOR,
                 profile_pictures[0].get_width() * LAST_SCALE_FACTOR, profile_pictures[0].get_height() * LAST_SCALE_FACTOR),
-    pygame.Rect(BASE_WIDTH * LAST_SCALE_FACTOR - profile_pictures[1].get_width() - 5 * SCALE_FACTOR * LAST_SCALE_FACTOR + LEFT_WIDTH, 98 * SCALE_FACTOR * LAST_SCALE_FACTOR + LEFT_WIDTH,
+    pygame.Rect(BASE_WIDTH * LAST_SCALE_FACTOR - profile_pictures[1].get_width() - 5 * SCALE_FACTOR * LAST_SCALE_FACTOR + LEFT_WIDTH, 98 * SCALE_FACTOR * LAST_SCALE_FACTOR,
                 profile_pictures[1].get_width() * LAST_SCALE_FACTOR, profile_pictures[1].get_height() * LAST_SCALE_FACTOR),
 ]
 score_rects = [
@@ -781,22 +781,22 @@ score_rects = [
                 score_coverR.get_width() * LAST_SCALE_FACTOR, score_coverR.get_height() * LAST_SCALE_FACTOR),
 ]
 score_rects1 = [
-    pygame.Rect(88 * SCALE_FACTOR * LAST_SCALE_FACTOR + LEFT_WIDTH, 41 * SCALE_FACTOR * LAST_SCALE_FACTOR + LEFT_WIDTH,
+    pygame.Rect(88 * SCALE_FACTOR * LAST_SCALE_FACTOR + LEFT_WIDTH, 41 * SCALE_FACTOR * LAST_SCALE_FACTOR,
                 score_coverR.get_width() * LAST_SCALE_FACTOR, score_coverR.get_height() * LAST_SCALE_FACTOR),
-    pygame.Rect(BASE_WIDTH // 2 * LAST_SCALE_FACTOR + LEFT_WIDTH, 41 * SCALE_FACTOR * LAST_SCALE_FACTOR + LEFT_WIDTH,
+    pygame.Rect(BASE_WIDTH // 2 * LAST_SCALE_FACTOR + LEFT_WIDTH, 41 * SCALE_FACTOR * LAST_SCALE_FACTOR,
                 score_coverR.get_width() * LAST_SCALE_FACTOR, score_coverR.get_height() * LAST_SCALE_FACTOR),
 ]
 money_rects = [
     pygame.Rect(0, 0,
-                money_cover.get_width() * LAST_SCALE_FACTOR // 2, money_cover.get_height() * LAST_SCALE_FACTOR // 2),
+                money_cover.get_width() * LAST_SCALE_FACTOR // 2, money_cover.get_height() * LAST_SCALE_FACTOR),
     pygame.Rect((BASE_WIDTH - money_cover.get_width() // 2) * LAST_SCALE_FACTOR, 0,
-                money_cover.get_width() * LAST_SCALE_FACTOR // 2, money_cover.get_height() * LAST_SCALE_FACTOR // 2),
+                money_cover.get_width() * LAST_SCALE_FACTOR // 2, money_cover.get_height() * LAST_SCALE_FACTOR),
 ]
 money_rects1 = [
-    pygame.Rect(LEFT_WIDTH, LEFT_WIDTH,
-                money_cover.get_width() * LAST_SCALE_FACTOR // 2, money_cover.get_height() * LAST_SCALE_FACTOR // 2),
-    pygame.Rect((BASE_WIDTH - money_cover.get_width() // 2) * LAST_SCALE_FACTOR + LEFT_WIDTH, LEFT_WIDTH,
-                money_cover.get_width() * LAST_SCALE_FACTOR // 2, money_cover.get_height() * LAST_SCALE_FACTOR // 2),
+    pygame.Rect(LEFT_WIDTH, 0,
+                money_cover.get_width() * LAST_SCALE_FACTOR // 2, money_cover.get_height() * LAST_SCALE_FACTOR),
+    pygame.Rect((BASE_WIDTH - money_cover.get_width() // 2) * LAST_SCALE_FACTOR + LEFT_WIDTH, 0,
+                money_cover.get_width() * LAST_SCALE_FACTOR // 2, money_cover.get_height() * LAST_SCALE_FACTOR),
 ]
 
 
