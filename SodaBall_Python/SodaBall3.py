@@ -925,7 +925,7 @@ while running:
                             profile_picture_team[i] += 1
                         else:
                             profile_picture_team[i] = 0
-                        controller.node_team[i+1] = profile_picture_team[i]
+                        controller.node_team[i+1] = profile_picture_team[i] + 1
                         reset = True
                 for i, rect in enumerate(profile_rects1):
                     if rect.collidepoint(event.pos):
@@ -934,7 +934,7 @@ while running:
                             profile_picture_team[i] += 1
                         else:
                             profile_picture_team[i] = 0
-                        controller.node_team[i+1] = profile_picture_team[i]
+                        controller.node_team[i+1] = profile_picture_team[i] + 1
                         reset = True
                 for i, rect in enumerate(score_rects):
                     if rect.collidepoint(event.pos):
@@ -964,7 +964,7 @@ while running:
                             profile_picture_team[i] -= 1
                         else:
                             profile_picture_team[i] = len(profile_pictures)-1
-                        controller.node_team[i+1] = profile_picture_team[i]
+                        controller.node_team[i+1] = profile_picture_team[i] + 1
                         reset = True
                 for i, rect in enumerate(profile_rects1):
                     if rect.collidepoint(event.pos):
@@ -973,7 +973,7 @@ while running:
                             profile_picture_team[i] -= 1
                         else:
                             profile_picture_team[i] = len(profile_pictures)-1
-                        controller.node_team[i+1] = profile_picture_team[i]
+                        controller.node_team[i+1] = profile_picture_team[i] + 1
                         reset = True
                 for i, rect in enumerate(score_rects):
                     if rect.collidepoint(event.pos):
