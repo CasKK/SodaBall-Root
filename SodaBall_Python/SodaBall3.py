@@ -880,7 +880,7 @@ while running:
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
                 for i, rect in enumerate(profile_rects):
-                    if button_rect.collidepoint(event.pos):
+                    if rect.collidepoint(event.pos):
                         print("Button clicked")
                         if profile_picture_team[i] == 1:
                             profile_picture_team[i] = 0
