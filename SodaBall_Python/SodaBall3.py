@@ -948,6 +948,51 @@ while running:
                         print("Button clicked")
                         controller.money[i+1] += 10
                         reset1 = True
+            if event.button == 3:
+                for i, rect in enumerate(profile_rects):
+                    if rect.collidepoint(event.pos):
+                        print("Button clicked")
+                        if profile_picture_team[i] > 0:
+                            profile_picture_team[i] -= 1
+                        else:
+                            profile_picture_team[i] = len(profile_pictures)-1
+                        reset = True
+                for i, rect in enumerate(profile_rects1):
+                    if rect.collidepoint(event.pos):
+                        print("Button clicked")
+                        if profile_picture_team[i] > 0:
+                            profile_picture_team[i] -= 1
+                        else:
+                            profile_picture_team[i] = len(profile_pictures)-1
+                        reset = True
+                for i, rect in enumerate(score_rects):
+                    if rect.collidepoint(event.pos):
+                        print("Button clicked")
+                        if controller.score[i+1] > 0:
+                            controller.score[i+1] -= 1
+                        reset1 = True
+                for i, rect in enumerate(score_rects1):
+                    if rect.collidepoint(event.pos):
+                        print("Button clicked")
+                        if controller.score[i+1] > 0:
+                            controller.score[i+1] -= 1
+                        reset1 = True
+                for i, rect in enumerate(money_rects):
+                    if rect.collidepoint(event.pos):
+                        print("Button clicked")
+                        if controller.money[i+1] >= 10:
+                            controller.money[i+1] -= 10
+                        elif controller.money[i+1] > 0:
+                            controller.money[i+1] = 0
+                        reset1 = True
+                for i, rect in enumerate(money_rects1):
+                    if rect.collidepoint(event.pos):
+                        print("Button clicked")
+                        if controller.money[i+1] >= 10:
+                            controller.money[i+1] -= 10
+                        elif controller.money[i+1] > 0:
+                            controller.money[i+1] = 0
+                        reset1 = True
 
     # ── Audio: drain pending celebration flag (main thread only) ─────────────
 
