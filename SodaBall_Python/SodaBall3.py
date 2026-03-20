@@ -907,15 +907,15 @@ while running:
         background_surface1.blit(bane_img, (0, 0))
         background_surface2.blit(bane_img, (0, 0))
 
-        background_surface1.blit(profile_pictures[profile_picture_team],
+        background_surface1.blit(profile_pictures[profile_picture_team[0]],
                                  (5 * SCALE_FACTOR, 98 * SCALE_FACTOR))
-        background_surface1.blit(profile_pictures[1],
+        background_surface1.blit(profile_pictures[profile_picture_team[1]],
                                  (BASE_WIDTH - profile_pictures[1].get_width() - 5 * SCALE_FACTOR,
                                   98 * SCALE_FACTOR))
-        background_surface2.blit(profile_pictures[profile_picture_team],
+        background_surface2.blit(profile_pictures[profile_picture_team[0]],
                                  (BASE_WIDTH - profile_pictures[1].get_width() - 5 * SCALE_FACTOR,
                                   98 * SCALE_FACTOR))
-        background_surface2.blit(profile_pictures[1],
+        background_surface2.blit(profile_pictures[profile_picture_team[1]],
                                  (5 * SCALE_FACTOR, 98 * SCALE_FACTOR))
 
         reset = False
