@@ -1035,28 +1035,28 @@ while running:
     if current_money_1 != last_money_1 or reset1:
         background_surface1.blit(money_cover, (2 * SCALE_FACTOR, 0))
         background_surface2.blit(money_cover, (BASE_WIDTH - money_cover.get_width() - 2 * SCALE_FACTOR, 0))
-        background_surface1.blit(wind_img1, (40*SCALE_FACTOR, -10 * SCALE_FACTOR))
-        background_surface2.blit(wind_img, (BASE_WIDTH - 40 * SCALE_FACTOR - wind_img.get_width(), -10 * SCALE_FACTOR))
-        money_text_1 = font.render(f"{int(controller.money[1] / 20)}", True, RED)
+        money_text_1 = font.render(f"{controller.money[1] // 20}", True, RED)
+        background_surface1.blit(wind_img1, (20 * SCALE_FACTOR + money_text_1.get_width(), -10 * SCALE_FACTOR))
+        background_surface2.blit(wind_img, (BASE_WIDTH - 40 * SCALE_FACTOR - wind_img.get_width() - money_text_1.get_width(), -10 * SCALE_FACTOR))
         background_surface1.blit(money_text_1, (10 * SCALE_FACTOR, 8 * SCALE_FACTOR))
         background_surface2.blit(money_text_1, (BASE_WIDTH - (10 * SCALE_FACTOR + money_text_1.get_width()), 8 * SCALE_FACTOR))
         if current_money_1 % 20 != 0:
             money_text_1_1 = fontSmall.render(f"½", True, RED)
             background_surface1.blit(money_text_1_1, (8 * SCALE_FACTOR + money_text_1.get_width(), 24 * SCALE_FACTOR))
-            background_surface2.blit(money_text_1_1, (BASE_WIDTH - (12 * SCALE_FACTOR + money_text_1.get_width()) + money_text_1.get_width(), 24 * SCALE_FACTOR))
+            background_surface2.blit(money_text_1_1, (BASE_WIDTH - (13 * SCALE_FACTOR + money_text_1.get_width()) + money_text_1.get_width(), 24 * SCALE_FACTOR))
         last_money_1 = current_money_1
 
     if current_money_2 != last_money_2 or reset1:
         background_surface2.blit(money_cover, (2 * SCALE_FACTOR, 0))
         background_surface1.blit(money_cover, (BASE_WIDTH - money_cover.get_width() - 2 * SCALE_FACTOR, 0))
-        background_surface2.blit(wind_img1, (40 * SCALE_FACTOR, -10 * SCALE_FACTOR))
-        background_surface1.blit(wind_img, (BASE_WIDTH - 40 * SCALE_FACTOR - wind_img.get_width(), -10 * SCALE_FACTOR))
-        money_text_2 = font.render(f"{int(controller.money[2] / 20)}", True, RED)
+        money_text_2 = font.render(f"{controller.money[2] // 20}", True, RED)
+        background_surface2.blit(wind_img1, (20 * SCALE_FACTOR + money_text_2.get_width(), -10 * SCALE_FACTOR))
+        background_surface1.blit(wind_img, (BASE_WIDTH - 20 * SCALE_FACTOR - wind_img.get_width() - money_text_2.get_width(), -10 * SCALE_FACTOR))
         background_surface1.blit(money_text_2, (BASE_WIDTH - (10 * SCALE_FACTOR + money_text_2.get_width()), 8 * SCALE_FACTOR))
         background_surface2.blit(money_text_2, (10 * SCALE_FACTOR, 8 * SCALE_FACTOR))
         if current_money_2 % 20 != 0:
             money_text_2_1 = fontSmall.render(f"½", True, RED)
-            background_surface1.blit(money_text_2_1, (BASE_WIDTH - (12 * SCALE_FACTOR + money_text_2.get_width()) + money_text_2.get_width(), 24 * SCALE_FACTOR))
+            background_surface1.blit(money_text_2_1, (BASE_WIDTH - (13 * SCALE_FACTOR + money_text_2.get_width()) + money_text_2.get_width(), 24 * SCALE_FACTOR))
             background_surface2.blit(money_text_2_1, (8 * SCALE_FACTOR + money_text_2.get_width(), 24 * SCALE_FACTOR))
         last_money_2 = current_money_2
 
