@@ -631,6 +631,37 @@ def asset_path(*parts):
 pygame.mixer.pre_init(48000, -16, 2, 4096)
 pygame.init()
 
+
+# ==========================================================
+# Monitor setup
+# ==========================================================
+
+desktop_sizes = pygame.display.get_desktop_sizes()
+print("Desktop sizes:", desktop_sizes)
+
+if len(desktop_sizes) < 2:
+    raise RuntimeError("Two monitors required.")
+
+LEFT_WIDTH,  LEFT_HEIGHT  = desktop_sizes[0]
+RIGHT_WIDTH, RIGHT_HEIGHT = desktop_sizes[1]
+
+if LEFT_HEIGHT != RIGHT_HEIGHT:
+    raise RuntimeError("Monitor heights must match.")
+
+window = Window("SodaBall", size=(LEFT_WIDTH + RIGHT_WIDTH, LEFT_HEIGHT))
+window.borderless = True
+surface = window.get_surface()
+
+if LEFT_HEIGHT == 540:
+    LAST_SCALE_FACTOR = 1
+elif LEFT_HEIGHT == 1080:
+    LAST_SCALE_FACTOR = 2
+elif LEFT_HEIGHT == 2160:
+    LAST_SCALE_FACTOR = 4
+else:
+    raise RuntimeError("Unsupported resolution (540p / 1080p / 4k).", desktop_sizes)
+
+
 # ==========================================================
 # Assets — load before controller so num_profiles is known
 # ==========================================================
@@ -675,36 +706,6 @@ def game_loop():
 
 threading.Thread(target=console_loop, daemon=True).start()
 threading.Thread(target=game_loop,    daemon=True).start()
-
-
-# ==========================================================
-# Monitor setup
-# ==========================================================
-
-desktop_sizes = pygame.display.get_desktop_sizes()
-print("Desktop sizes:", desktop_sizes)
-
-if len(desktop_sizes) < 2:
-    raise RuntimeError("Two monitors required.")
-
-LEFT_WIDTH,  LEFT_HEIGHT  = desktop_sizes[0]
-RIGHT_WIDTH, RIGHT_HEIGHT = desktop_sizes[1]
-
-if LEFT_HEIGHT != RIGHT_HEIGHT:
-    raise RuntimeError("Monitor heights must match.")
-
-window = Window("SodaBall", size=(LEFT_WIDTH + RIGHT_WIDTH, LEFT_HEIGHT))
-window.borderless = True
-surface = window.get_surface()
-
-if LEFT_HEIGHT == 540:
-    LAST_SCALE_FACTOR = 1
-elif LEFT_HEIGHT == 1080:
-    LAST_SCALE_FACTOR = 2
-elif LEFT_HEIGHT == 2160:
-    LAST_SCALE_FACTOR = 4
-else:
-    raise RuntimeError("Unsupported resolution (540p / 1080p / 4k).", desktop_sizes)
 
 
 # ==========================================================
