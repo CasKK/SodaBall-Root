@@ -1045,7 +1045,7 @@ while running:
         background_surface2.blit(money_text_1,
                                  (int(BASE_WIDTH - (BASE_WIDTH / 50 + money_text_1.get_width())),
                                   8 * SCALE_FACTOR))
-        if current_money_1 % 20 == 5:
+        if current_money_1 % 20 != 0:
             money_text_1_1 = fontSmall.render(f"{int(controller.money[1] / 20)}", True, RED)
             background_surface1.blit(money_text_1_1, (int(BASE_WIDTH / 40), 12 * SCALE_FACTOR))
             background_surface2.blit(money_text_1_1,
@@ -1066,7 +1066,7 @@ while running:
                                  (int(BASE_WIDTH - (BASE_WIDTH / 50 + money_text_2.get_width())),
                                   8 * SCALE_FACTOR))
         background_surface2.blit(money_text_2, (int(BASE_WIDTH / 50), 8 * SCALE_FACTOR))
-        if current_money_1 % 20 == 5:
+        if current_money_1 % 20 != 0:
             money_text_2_1 = fontSmall.render(f"{int(controller.money[1] / 20)}", True, RED)
             background_surface1.blit(money_text_2_1,
                                  (int(BASE_WIDTH - (BASE_WIDTH / 40 + money_text_2.get_width())),
