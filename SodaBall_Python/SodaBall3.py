@@ -312,6 +312,9 @@ class ArduinoNode:
         self.event_callback(event)
         self.send_ack(sender_id, seq)
 
+# ==========================================================
+# Audio Manager
+# ==========================================================
 
 class AudioManager:
     CELEBRATE_VOL     = 1.0
@@ -330,7 +333,7 @@ class AudioManager:
         self._vlc_instance = vlc.Instance("--no-video")
         self._vlc_player = self._vlc_instance.media_player_new()
 
-        # ── Celebration pools (unchanged) ────────────────────────────────────
+        # ── Celebration pools ────────────────────────────────────
         self._pools: dict[int, list[pygame.mixer.Sound]] = {}
         self._last_played: dict[int, int] = {}
         for team_id in (1, 2):
@@ -872,10 +875,10 @@ while running:
             if event.button == 1:
                 if button_rect.collidepoint(event.pos):
                     print("Button clicked")
-                    if profile_pictures_number1 <= 2:
+                    if profile_pictures_number1 == 1:
                         profile_pictures_number1 = 0
                     else:
-                        profile_pictures_number1 += 1
+                        profile_pictures_number1 = 1
                     reset = True
 
     # ── Audio: drain pending celebration flag (main thread only) ─────────────
