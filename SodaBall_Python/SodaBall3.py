@@ -765,9 +765,22 @@ profile_pictures = [
 profile_rects = [
     pygame.Rect(5 * SCALE_FACTOR * LAST_SCALE_FACTOR, 98 * SCALE_FACTOR * LAST_SCALE_FACTOR,
                 profile_pictures[0].get_width() * LAST_SCALE_FACTOR, profile_pictures[0].get_height() * LAST_SCALE_FACTOR),
-    pygame.Rect(BASE_WIDTH - profile_pictures[1].get_width() - 5 * SCALE_FACTOR * LAST_SCALE_FACTOR, 98 * SCALE_FACTOR * LAST_SCALE_FACTOR,
-                profile_pictures[1].get_width(), profile_pictures[1].get_height()),
+    pygame.Rect(BASE_WIDTH * LAST_SCALE_FACTOR - profile_pictures[1].get_width() - 5 * SCALE_FACTOR * LAST_SCALE_FACTOR, 98 * SCALE_FACTOR * LAST_SCALE_FACTOR,
+                profile_pictures[1].get_width() * LAST_SCALE_FACTOR, profile_pictures[1].get_height() * LAST_SCALE_FACTOR),
 ]
+profile_rects1 = [
+    pygame.Rect(5 * SCALE_FACTOR * LAST_SCALE_FACTOR + LEFT_WIDTH, 98 * SCALE_FACTOR * LAST_SCALE_FACTOR + LEFT_WIDTH,
+                profile_pictures[0].get_width() * LAST_SCALE_FACTOR, profile_pictures[0].get_height() * LAST_SCALE_FACTOR),
+    pygame.Rect(BASE_WIDTH * LAST_SCALE_FACTOR - profile_pictures[1].get_width() - 5 * SCALE_FACTOR * LAST_SCALE_FACTOR + LEFT_WIDTH, 98 * SCALE_FACTOR * LAST_SCALE_FACTOR + LEFT_WIDTH,
+                profile_pictures[1].get_width() * LAST_SCALE_FACTOR, profile_pictures[1].get_height() * LAST_SCALE_FACTOR),
+]
+score_rects = [
+    pygame.Rect(88 * SCALE_FACTOR * LAST_SCALE_FACTOR, 41 * SCALE_FACTOR * LAST_SCALE_FACTOR,
+                score_coverR.get_width() * LAST_SCALE_FACTOR, score_coverR.get_height() * LAST_SCALE_FACTOR),
+    pygame.Rect(BASE_WIDTH // 2 * LAST_SCALE_FACTOR, 41 * SCALE_FACTOR * LAST_SCALE_FACTOR,
+                score_coverR.get_width() * LAST_SCALE_FACTOR, score_coverR.get_height() * LAST_SCALE_FACTOR),
+]
+
 
 # Fonts
 font = pygame.font.Font(asset_path("Press_Start_2P/PressStart2P-Regular.ttf"), 30 * SCALE_FACTOR)
@@ -882,11 +895,24 @@ while running:
                 for i, rect in enumerate(profile_rects):
                     if rect.collidepoint(event.pos):
                         print("Button clicked")
-                        if profile_picture_team[i] == 1:
+                        if profile_picture_team[i] == len(profile_pictures):
                             profile_picture_team[i] = 0
                         else:
-                            profile_picture_team[i] = 1
+                            profile_picture_team[i] += 1
                         reset = True
+                for i, rect in enumerate(profile_rects1):
+                    if rect.collidepoint(event.pos):
+                        print("Button clicked")
+                        if profile_picture_team[i] == len(profile_pictures):
+                            profile_picture_team[i] = 0
+                        else:
+                            profile_picture_team[i] += 1
+                        reset = True
+                for i, rect in enumerate(score_rects):
+                    if rect.collidepoint(event.pos):
+                        print("Button clicked")
+                        controller.score[i+1] += 1
+                        reset1 = True
 
     # ── Audio: drain pending celebration flag (main thread only) ─────────────
 
