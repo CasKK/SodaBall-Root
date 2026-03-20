@@ -889,7 +889,10 @@ background_surface1 = None
 background_surface2 = None
 
 clock = pygame.time.Clock()
-running = True
+running = True#
+MOUSE_HIDE_DELAY = 5.0  # seconds
+last_mouse_move = time.time()
+mouse_visible = True
 
 profile_picture_team = [0, 1]
 last_windsock_frame_index = -1
@@ -899,7 +902,7 @@ reset1 = False
 windsockReset = True
 score_change = False
 
-button_rect = pygame.Rect(10 + 920, 195, 600, 600)
+
 
 # ==========================================================
 # Main loop
@@ -1003,6 +1006,15 @@ while running:
                         elif controller.money[i+1] > 0:
                             controller.money[i+1] = 0
                         reset1 = True
+        elif event.type == pygame.MOUSEMOTION:
+            last_mouse_move = time.time()
+            if not mouse_visible:
+                pygame.mouse.set_visible(True)
+                mouse_visible = True
+
+    if mouse_visible and time.time() - last_mouse_move > MOUSE_HIDE_DELAY:
+        pygame.mouse.set_visible(False)
+        mouse_visible = False
 
     # ── Audio: drain pending celebration flag (main thread only) ─────────────
 
