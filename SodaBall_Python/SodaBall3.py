@@ -763,9 +763,9 @@ profile_pictures = [
     for i in range(2)
 ]
 profile_rects = [
-    pygame.Rect(5 * SCALE_FACTOR, 98 * SCALE_FACTOR,
-                profile_pictures[0].get_width(), profile_pictures[0].get_height()),
-    pygame.Rect(BASE_WIDTH - profile_pictures[1].get_width() - 5 * SCALE_FACTOR, 98 * SCALE_FACTOR,
+    pygame.Rect(5 * SCALE_FACTOR * LAST_SCALE_FACTOR, 98 * SCALE_FACTOR * LAST_SCALE_FACTOR,
+                profile_pictures[0].get_width() * LAST_SCALE_FACTOR, profile_pictures[0].get_height() * LAST_SCALE_FACTOR),
+    pygame.Rect(BASE_WIDTH - profile_pictures[1].get_width() - 5 * SCALE_FACTOR * LAST_SCALE_FACTOR, 98 * SCALE_FACTOR * LAST_SCALE_FACTOR,
                 profile_pictures[1].get_width(), profile_pictures[1].get_height()),
 ]
 
