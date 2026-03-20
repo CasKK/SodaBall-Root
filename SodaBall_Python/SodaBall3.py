@@ -10,6 +10,7 @@ from pathlib import Path
 import random
 from pygame._sdl2.video import Window
 import os
+import vlc
 
 crc8 = crcmod.predefined.mkCrcFun('crc-8')
 RETRY_INTERVAL = 0.2   # seconds
@@ -312,21 +313,22 @@ class ArduinoNode:
         self.send_ack(sender_id, seq)
 
 
-# ==========================================================
-# Audio Manager
-# ==========================================================
-
 class AudioManager:
-    MUSIC_NORMAL_VOL  = 0.7
-    MUSIC_DUCKED_VOL  = 0.12
     CELEBRATE_VOL     = 1.0
-    FADE_IN_RATE      = 0.6
+    FADE_IN_RATE      = 60.0   # VLC volume units per second (VLC scale: 0-100)
     CELEBRATE_CHANNEL = 1
+    VOLUME_NORMAL     = 100    # VLC scale 0-100
+    VOLUME_DUCKED     = 15
 
     def __init__(self, base_dir: Path):
         pygame.mixer.set_num_channels(8)
         self._channel = pygame.mixer.Channel(self.CELEBRATE_CHANNEL)
         self._celebrating = False
+        self._current_vol = float(self.VOLUME_NORMAL)
+
+        # ── VLC instance ─────────────────────────────────────────────────────
+        self._vlc_instance = vlc.Instance("--no-video")
+        self._vlc_player = self._vlc_instance.media_player_new()
 
         # ── Celebration pools (unchanged) ────────────────────────────────────
         self._pools: dict[int, list[pygame.mixer.Sound]] = {}
@@ -347,7 +349,7 @@ class AudioManager:
             self._pools[team_id] = sounds
             self._last_played[team_id] = -1
 
-        # ── Background music playlist ─────────────────────────────────────────
+        # ── Background playlist ───────────────────────────────────────────────
         bg_folder = base_dir / "Audio" / "background"
         self._playlist: list[Path] = []
         if bg_folder.exists():
@@ -355,8 +357,7 @@ class AudioManager:
                 f for f in bg_folder.iterdir()
                 if f.suffix.lower() in (".ogg", ".wav", ".mp3")
             ]
-        
-        self._playlist_order: list[Path] = []  # reshuffled copy, consumed as a queue
+        self._playlist_order: list[Path] = []
         self._current_track: Path | None = None
 
         if self._playlist:
@@ -364,15 +365,9 @@ class AudioManager:
         else:
             print("[AUDIO] Warning: no background tracks found in Audio/background/")
 
-        # Tell pygame to call _on_track_end when a music track finishes
-        pygame.mixer.music.set_endevent(pygame.USEREVENT + 1)
-        self._music_end_event = pygame.USEREVENT + 1
-
     def _reshuffle(self):
-        """Refill the queue with a reshuffled playlist, avoiding immediate repeat."""
         new_order = self._playlist.copy()
         random.shuffle(new_order)
-        # If the last track we played would come up first again, swap it back
         if (self._current_track is not None
                 and len(new_order) > 1
                 and new_order[0] == self._current_track):
@@ -385,46 +380,35 @@ class AudioManager:
 
         track = self._playlist_order.pop(0)
         self._current_track = track
-        try:
-            pygame.mixer.music.load(str(track))
-            pygame.mixer.music.set_volume(self.MUSIC_NORMAL_VOL)
-            pygame.mixer.music.play()
-            print(f"[AUDIO] Now playing: {track.name}")
-        except Exception as e:
-            print(f"[AUDIO] Failed to play {track.name}: {e}")
-            self._start_next_track()  # skip broken file and try next
 
-    def handle_pygame_event(self, event):
-        """Call this from your pygame event loop with every event."""
-        if event.type == self._music_end_event:
-            self._start_next_track()
+        media = self._vlc_instance.media_new(str(track))
+        self._vlc_player.set_media(media)
+        self._vlc_player.play()
+        # Restore whatever volume we're currently at
+        self._vlc_player.audio_set_volume(int(self._current_vol))
+        print(f"[AUDIO] Now playing: {track.name}")
 
     def play_goal(self, team_id: int):
-        """
-        Called when a goal is scored.  Picks a non-repeating random clip
-        from the team's pool, ducks the background music, and plays it.
-        """
         pool = self._pools.get(team_id, [])
         if not pool:
             print(f"[AUDIO] No celebration sounds for team {team_id}")
             return
 
-        # Pick a random clip, avoiding immediate repeat if pool > 1
         if len(pool) > 1:
             choices = [i for i in range(len(pool)) if i != self._last_played[team_id]]
         else:
             choices = [0]
         idx = random.choice(choices)
         self._last_played[team_id] = idx
-
         sound = pool[idx]
 
-        # Stop any ongoing celebration
         if self._channel.get_busy():
             self._channel.stop()
 
-        # Duck background and fire celebration
-        pygame.mixer.music.set_volume(self.MUSIC_DUCKED_VOL)
+        # Duck VLC mid-playback — no restart needed
+        self._current_vol = float(self.VOLUME_DUCKED)
+        self._vlc_player.audio_set_volume(self.VOLUME_DUCKED)
+
         self._channel.play(sound)
         self._celebrating = True
 
@@ -432,27 +416,25 @@ class AudioManager:
             print(f"[AUDIO] Goal! team{team_id} clip {idx+1}/{len(pool)}")
 
     def update(self, dt: float):
-        """
-        Call once per frame from the main loop.
-        Fades background music back in after celebration ends.
-        """
-        if not self._celebrating:
-            return
+        # Advance playlist when track finishes
+        state = self._vlc_player.get_state()
+        if state in (vlc.State.Ended, vlc.State.Stopped, vlc.State.Error):
+            self._start_next_track()
 
-        if not self._channel.get_busy():
-            # Celebration finished — fade background back in
-            current_vol = pygame.mixer.music.get_volume()
-            new_vol = min(current_vol + self.FADE_IN_RATE * dt, self.MUSIC_NORMAL_VOL)
-            pygame.mixer.music.set_volume(new_vol)
-            if new_vol >= self.MUSIC_NORMAL_VOL:
+        # Smooth fade back in after celebration ends
+        if self._celebrating and not self._channel.get_busy():
+            new_vol = min(self._current_vol + self.FADE_IN_RATE * dt, self.VOLUME_NORMAL)
+            self._current_vol = new_vol
+            self._vlc_player.audio_set_volume(int(new_vol))
+            if new_vol >= self.VOLUME_NORMAL:
                 self._celebrating = False
                 if debug:
                     print("[AUDIO] Background restored")
 
     def stop_all(self):
-        """Clean shutdown."""
         self._channel.stop()
-        pygame.mixer.music.stop()
+        self._vlc_player.stop()
+        self._vlc_instance.release()
 
 
 # ==========================================================
@@ -701,7 +683,7 @@ def asset_path(*parts):
 # ==========================================================
 
 pygame.init()
-pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=512)
+pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=8192)
 
 # AudioManager must be created AFTER pygame.mixer.init()
 audio = AudioManager(BASE_DIR)
@@ -897,8 +879,7 @@ while running:
                     reset = True
 
     # ── Audio: drain pending celebration flag (main thread only) ─────────────
-    audio.handle_pygame_event(event)
-    
+
     with controller._celebration_lock:
         pending_team = controller.pending_celebration
         controller.pending_celebration = None
