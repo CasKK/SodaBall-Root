@@ -762,6 +762,12 @@ profile_pictures = [
     )
     for i in range(2)
 ]
+profile_rects = [
+    pygame.Rect(5 * SCALE_FACTOR, 98 * SCALE_FACTOR,
+                profile_pictures[0].get_width(), profile_pictures[0].get_height()),
+    pygame.Rect(BASE_WIDTH - profile_pictures[1].get_width() - 5 * SCALE_FACTOR, 98 * SCALE_FACTOR,
+                profile_pictures[1].get_width(), profile_pictures[1].get_height()),
+]
 
 # Fonts
 font = pygame.font.Font(asset_path("Press_Start_2P/PressStart2P-Regular.ttf"), 30 * SCALE_FACTOR)
@@ -846,7 +852,7 @@ background_surface2 = None
 clock = pygame.time.Clock()
 running = True
 
-profile_pictures_number1 = 0
+profile_picture_team = [0, 0]
 last_windsock_frame_index = -1
 
 reset = True
@@ -873,13 +879,14 @@ while running:
                 running = False
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
-                if button_rect.collidepoint(event.pos):
-                    print("Button clicked")
-                    if profile_pictures_number1 == 1:
-                        profile_pictures_number1 = 0
-                    else:
-                        profile_pictures_number1 = 1
-                    reset = True
+                for i, rect in enumerate(profile_rects):
+                    if button_rect.collidepoint(event.pos):
+                        print("Button clicked")
+                        if profile_picture_team[i] == 1:
+                            profile_picture_team[i] = 0
+                        else:
+                            profile_picture_team[i] = 1
+                        reset = True
 
     # ── Audio: drain pending celebration flag (main thread only) ─────────────
 
@@ -900,12 +907,12 @@ while running:
         background_surface1.blit(bane_img, (0, 0))
         background_surface2.blit(bane_img, (0, 0))
 
-        background_surface1.blit(profile_pictures[profile_pictures_number1],
+        background_surface1.blit(profile_pictures[profile_picture_team],
                                  (5 * SCALE_FACTOR, 98 * SCALE_FACTOR))
         background_surface1.blit(profile_pictures[1],
                                  (BASE_WIDTH - profile_pictures[1].get_width() - 5 * SCALE_FACTOR,
                                   98 * SCALE_FACTOR))
-        background_surface2.blit(profile_pictures[profile_pictures_number1],
+        background_surface2.blit(profile_pictures[profile_picture_team],
                                  (BASE_WIDTH - profile_pictures[1].get_width() - 5 * SCALE_FACTOR,
                                   98 * SCALE_FACTOR))
         background_surface2.blit(profile_pictures[1],
