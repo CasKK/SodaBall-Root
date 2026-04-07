@@ -617,7 +617,8 @@ class GameController:
                     "goal <team> | score <team> <delta> | profile <node> <+1/-1>")
 
         except (IndexError, ValueError):
-            print("Invalid command syntax")
+            print("Invalid command syntax\nCommands: air <id> | noair | money <id> <delta> | "
+                    "goal <team> | score <team> <delta> | profile <node> <+1/-1>")
 
     def start_air(self, node_id):
         if self.airPhase != "IDLE":
@@ -1085,7 +1086,7 @@ while running:
         background_surface2.blit(money_cover, (BASE_WIDTH - money_cover.get_width() - 2 * SCALE_FACTOR, 0))
         money_text_1 = font.render(f"{controller.money[1] // 20}", True, RED)
         background_surface1.blit(wind_img1, (20 * SCALE_FACTOR + money_text_1.get_width(), -10 * SCALE_FACTOR))
-        background_surface2.blit(wind_img, (BASE_WIDTH - 40 * SCALE_FACTOR - wind_img.get_width() - money_text_1.get_width(), -10 * SCALE_FACTOR))
+        background_surface2.blit(wind_img, (BASE_WIDTH - 20 * SCALE_FACTOR - wind_img.get_width() - money_text_1.get_width(), -10 * SCALE_FACTOR))
         background_surface1.blit(money_text_1, (10 * SCALE_FACTOR, 8 * SCALE_FACTOR))
         background_surface2.blit(money_text_1, (BASE_WIDTH - (10 * SCALE_FACTOR + money_text_1.get_width()), 8 * SCALE_FACTOR))
         if current_money_1 % 20 != 0:
@@ -1189,7 +1190,7 @@ while running:
     surface.blit(scaled_left,  (0, 0))
     surface.blit(scaled_right, (LEFT_WIDTH, 0))
     window.flip()
-    print(time.perf_counter() - start)
+    #print(time.perf_counter() - start)
 
 audio.stop_all()
 pygame.quit()
