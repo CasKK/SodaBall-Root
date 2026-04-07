@@ -469,6 +469,8 @@ class GameController:
         # Flag read by the main loop to trigger audio (set from game thread)
         self.pending_celebration: int | None = None  # team_id or None
         self._celebration_lock = threading.Lock()
+        self.pending_profile_change: tuple | None = None   # (node_id, delta)
+        self._profile_lock = threading.Lock()
 
     def register_node(self, node):
         self.nodes[node.id] = node
@@ -592,15 +594,27 @@ class GameController:
                 delta = int(parts[2])
                 self.adjust_money(node_id, delta)
             elif op == "goal":
-                # Manual goal trigger for testing: "goal 1" or "goal 2"
                 team = int(parts[1])
                 with self._celebration_lock:
                     self.pending_celebration = team
-                    # Also update score for completeness
-                    self.score[team] += 1
-                    print(f"[MANUAL] Goal for team {team}, score: {self.score[1]}:{self.score[2]}")
+                opposing = 2 if team == 1 else 1
+                self.score[opposing] += 1          # goal goes IN opposing node's net
+                print(f"[MANUAL] Goal for team {team}, score: {self.score[1]}:{self.score[2]}")
+            elif op == "score":
+                # "score <team> <delta>" — adjust score silently, no celebration
+                team = int(parts[1])
+                delta = int(parts[2])
+                self.score[team] = max(0, self.score[team] + delta)
+                print(f"[MANUAL] Score adjusted: {self.score[1]}:{self.score[2]}")
+            elif op == "profile":
+                # "profile <node_id> <delta>" — cycle profile picture
+                node_id = int(parts[1])
+                delta = int(parts[2])   # +1 or -1
+                self.pending_profile_change = (node_id, delta)
+                print(f"[MANUAL] Profile change node {node_id} delta {delta}")
             else:
-                print("Unknown command. Available: air <id>, noair, money <id> <delta>, goal <team>")
+                print("Commands: air <id> | noair | money <id> <delta> | "
+                    "goal <team> | score <team> <delta> | profile <node> <+1/-1>")
 
         except (IndexError, ValueError):
             print("Invalid command syntax")
@@ -765,7 +779,7 @@ profile_pictures = [
         pygame.image.load(asset_path(f"Profiles/profile_img_{i+1}.jpg")).convert_alpha(),
         (75 * SCALE_FACTOR, 75 * SCALE_FACTOR)
     )
-    for i in range(2)
+    for i in range(2) #############################################################################################
 ]
 profile_rects = [
     pygame.Rect(5 * SCALE_FACTOR * LAST_SCALE_FACTOR, 98 * SCALE_FACTOR * LAST_SCALE_FACTOR,
@@ -952,12 +966,12 @@ while running:
                 for i, rect in enumerate(money_rects):
                     if rect.collidepoint(event.pos):
                         print("Button clicked")
-                        controller.money[i+1] += 10
+                        controller.adjust_money(i+1, 10)
                         reset1 = True
                 for i, rect in enumerate(money_rects1):
                     if rect.collidepoint(event.pos):
                         print("Button clicked")
-                        controller.money[i+1] += 10
+                        controller.adjust_money(i+1, 10)
                         reset1 = True
             if event.button == 3:
                 for i, rect in enumerate(profile_rects):
@@ -994,17 +1008,17 @@ while running:
                     if rect.collidepoint(event.pos):
                         print("Button clicked")
                         if controller.money[i+1] >= 10:
-                            controller.money[i+1] -= 10
+                            controller.adjust_money(i+1, -10)
                         elif controller.money[i+1] > 0:
-                            controller.money[i+1] = 0
+                            controller.adjust_money(i+1, -controller.money[i+1])
                         reset1 = True
                 for i, rect in enumerate(money_rects1):
                     if rect.collidepoint(event.pos):
                         print("Button clicked")
                         if controller.money[i+1] >= 10:
-                            controller.money[i+1] -= 10
+                            controller.adjust_money(i+1, -10)
                         elif controller.money[i+1] > 0:
-                            controller.money[i+1] = 0
+                            controller.adjust_money(i+1, -controller.money[i+1])
                         reset1 = True
         elif event.type == pygame.MOUSEMOTION:
             last_mouse_move = time.time()
@@ -1026,6 +1040,19 @@ while running:
         audio.play_goal(pending_team)
 
     audio.update(dt)   # handles fade-back-in each frame
+
+    # ── pending_profile drain
+
+    with controller._profile_lock:
+        pending_profile = controller.pending_profile_change
+        controller.pending_profile_change = None
+
+    if pending_profile is not None:
+        node_id, delta = pending_profile
+        i = node_id - 1   # node 1 → index 0, node 2 → index 1
+        profile_picture_team[i] = (profile_picture_team[i] + delta) % len(profile_pictures)
+        controller.node_team[node_id] = profile_picture_team[i] + 1
+        reset = True
 
     # ── Render base scene ────────────────────────────────────────────────────
     if reset:
