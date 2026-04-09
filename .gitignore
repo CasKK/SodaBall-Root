@@ -7,6 +7,13 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+### PlatformIO ###
+.pioenvs
+.piolibdeps
+.clang_complete
+.gcc-flags.json
+.pio
+
 # C extensions
 *.so
 
