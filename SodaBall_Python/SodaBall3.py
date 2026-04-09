@@ -12,6 +12,7 @@ from pygame._sdl2.video import Window
 import os
 import vlc
 import subprocess
+import socket
 
 crc8 = crcmod.predefined.mkCrcFun('crc-8')
 RETRY_INTERVAL = 0.2   # seconds
@@ -714,6 +715,22 @@ def game_loop():
         time.sleep(0.01)
 
 threading.Thread(target=game_loop, daemon=True).start()
+
+def udp_loop(controller, host="0.0.0.0", port=5005):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind((host, port))
+    print(f"[UDP] Listening on {host}:{port}")
+    while True:
+        try:
+            data, addr = sock.recvfrom(256)
+            cmd = data.decode(errors="ignore").strip()
+            if cmd:
+                print(f"[UDP] {addr}: {cmd}")
+                controller.manual_command(cmd)
+        except Exception as e:
+            print(f"[UDP] Error: {e}")
+
+threading.Thread(target=udp_loop, args=(controller,), daemon=True).start()
 
 # ==========================================================
 # File paths
