@@ -11,6 +11,7 @@ import random
 from pygame._sdl2.video import Window
 import os
 import vlc
+import subprocess
 
 crc8 = crcmod.predefined.mkCrcFun('crc-8')
 RETRY_INTERVAL = 0.2   # seconds
@@ -671,6 +672,28 @@ class GameController:
 
 controller = GameController()
 manager = NodeManager(controller, required_ids={1, 2})
+
+def start_hotspot(ssid="SodaBall", password="12321232"):
+    # Check if hotspot is already running
+    result = subprocess.run(
+        ["nmcli", "connection", "show", "--active"],
+        capture_output=True, text=True
+    )
+    if "Hotspot" in result.stdout:
+        print("[WIFI] Hotspot already running")
+        return
+
+    print("[WIFI] Starting hotspot...")
+    subprocess.run([
+        "nmcli", "device", "wifi", "hotspot",
+        "ifname", "wlan0",
+        "ssid", ssid,
+        "password", password
+    ], check=True)
+    time.sleep(2)  # give it a moment to come up
+    print(f"[WIFI] Hotspot '{ssid}' started")
+
+start_hotspot()
 
 def console_loop(controller):
     while True:
