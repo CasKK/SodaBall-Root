@@ -603,24 +603,28 @@ class GameController:
                 self.score[opposing] += 1          # goal goes IN opposing node's net
                 print(f"[MANUAL] Goal for team {team}, score: {self.score[1]}:{self.score[2]}")
             elif op == "score":
-                # "score <team> <delta>" — adjust score silently, no celebration
                 team = int(parts[1])
                 delta = int(parts[2])
                 self.score[team] = max(0, self.score[team] + delta)
                 print(f"[MANUAL] Score adjusted: {self.score[1]}:{self.score[2]}")
             elif op == "profile":
-                # "profile <node_id> <delta>" — cycle profile picture
                 node_id = int(parts[1])
                 delta = int(parts[2])   # +1 or -1
                 self.pending_profile_change = (node_id, delta)
                 print(f"[MANUAL] Profile change node {node_id} delta {delta}")
+            elif op == "reset":
+                self.score[1] = 0
+                self.score[2] = 0
+                self.adjust_money(1, -self.money[1])
+                self.adjust_money(2, -self.money[2])
+                print(f"[MANUAL] reset")
             else:
-                print("Commands: air <id> | noair | money <id> <delta> | "
-                    "goal <team> | score <team> <delta> | profile <node> <+1/-1>")
+                print("Commands: air <team> | noair | money <team> <delta> | "
+                    "goal <team> | score <team> <delta> | profile <node> <+1/-1>| reset")
 
         except (IndexError, ValueError):
             print("Invalid command syntax\nCommands: air <id> | noair | money <id> <delta> | "
-                    "goal <team> | score <team> <delta> | profile <node> <+1/-1>")
+                    "goal <team> | score <team> <delta> | profile <node> <+1/-1> | reset")
 
     def start_air(self, node_id):
         if self.airPhase != "IDLE":
