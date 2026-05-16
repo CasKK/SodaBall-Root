@@ -322,7 +322,7 @@ class AudioManager:
     CELEBRATE_VOL     = 1.0
     FADE_IN_RATE      = 60.0   # VLC volume units per second (VLC scale: 0-100)
     CELEBRATE_CHANNEL = 1
-    VOLUME_NORMAL     = 100    # VLC scale 0-100
+    VOLUME_NORMAL     = 60    # VLC scale 0-100
     VOLUME_DUCKED     = 15
 
     def __init__(self, base_dir: Path):
