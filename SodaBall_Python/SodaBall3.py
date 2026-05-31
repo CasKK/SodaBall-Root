@@ -1,3 +1,6 @@
+import os
+os.environ.setdefault("DISPLAY", ":0")
+os.environ.setdefault("XAUTHORITY", "/home/pi/.Xauthority")  # adjust username
 import serial
 import serial.tools.list_ports
 import crcmod
@@ -9,7 +12,6 @@ import pygame
 from pathlib import Path
 import random
 from pygame._sdl2.video import Window
-import os
 import vlc
 import subprocess
 import socket
@@ -618,6 +620,14 @@ class GameController:
                 self.adjust_money(1, -self.money[1])
                 self.adjust_money(2, -self.money[2])
                 print(f"[MANUAL] reset")
+            elif op == "airduration":
+                self.airDuration = int(parts[1])
+            elif op == "smokedelay":
+                self.smokeStartDelay = int(parts[1])
+            elif op == "smokeduration":
+                self.smokeDuration = int(parts[1])
+            elif op == "smokeendearly":
+                self.nosmokeDuration = int(parts[1])
             else:
                 print("Commands: air <team> | noair | money <team> <delta> | "
                     "goal <team> | score <team> <delta> | profile <node> <+1/-1>| reset")
