@@ -458,10 +458,10 @@ class GameController:
         self.nodes = {}
         self.node_team = {1: 1, 2: 2}
         self.airOwner = None
-        self.airDuration = 10.0
-        self.smokeStartDelay = 1.0
-        self.smokeDuration = 5.0
-        self.nosmokeDuration = 3.0
+        self.airDuration = 20.0
+        self.smokeStartDelay = 0 # Smoke late start
+        self.smokeDuration = 10.0
+        self.nosmokeDuration = 0 # Used when manual air-cancel
         self.airCost = 20
         self.bigCoin = 20
         self.smallCoin = 10
