@@ -833,7 +833,7 @@ profile_pictures = [
         pygame.image.load(asset_path(f"Profiles/profile_img_{i+1}.jpg")).convert_alpha(),
         (75 * SCALE_FACTOR, 75 * SCALE_FACTOR)
     )
-    for i in range(2) #############################################################################################
+    for i in range(8) #############################################################################################
 ]
 profile_rects = [
     pygame.Rect(5 * SCALE_FACTOR * LAST_SCALE_FACTOR, 98 * SCALE_FACTOR * LAST_SCALE_FACTOR,
