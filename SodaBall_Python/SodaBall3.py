@@ -321,13 +321,13 @@ class ArduinoNode:
 # ==========================================================
 
 class AudioManager:
-    CELEBRATE_VOL     = 1.0
-    FADE_IN_RATE      = 60.0   # VLC volume units per second (VLC scale: 0-100)
-    CELEBRATE_CHANNEL = 1
-    VOLUME_NORMAL     = 60    # VLC scale 0-100
-    VOLUME_DUCKED     = 15
-
+    
     def __init__(self, base_dir: Path):
+        self.CELEBRATE_VOL     = 1.0
+        self.FADE_IN_RATE      = 60.0   # VLC volume units per second (VLC scale: 0-100)
+        self.CELEBRATE_CHANNEL = 1
+        self.VOLUME_NORMAL     = 60    # VLC scale 0-100
+        self.VOLUME_DUCKED     = 15
         pygame.mixer.set_num_channels(8)
         self._channel = pygame.mixer.Channel(self.CELEBRATE_CHANNEL)
         self._celebrating = False
@@ -460,11 +460,11 @@ class GameController:
         self.airOwner = None
         self.airDuration = 20.0
         self.smokeStartDelay = 0 # Smoke late start
-        self.smokeDuration = 10.0
+        self.smokeDuration = 16.0
         self.nosmokeDuration = 0 # Used when manual air-cancel
         self.airCost = 20
-        self.bigCoin = 20
-        self.smallCoin = 10
+        self.bigCoin = 40
+        self.smallCoin = 20
         self.airStart = None
         self.airActive = False
         self.airPhase = "IDLE"
@@ -506,14 +506,14 @@ class GameController:
         elif button == "coinBig":
             n = self.nodes.get(node_id)
             if n and n.is_ready():
-                self.money[node_id] += 20
+                self.money[node_id] += self.bigCoin
                 n.send_command("D", self.money[node_id])
                 if debug: print("D, +bigCoin")
 
         elif button == "coinSmall":
             n = self.nodes.get(node_id)
             if n and n.is_ready():
-                self.money[node_id] += 10
+                self.money[node_id] += self.smallCoin
                 n.send_command("D", self.money[node_id])
                 if debug: print("D, +smallCoin")
 
@@ -621,13 +621,15 @@ class GameController:
                 self.adjust_money(2, -self.money[2])
                 print(f"[MANUAL] reset")
             elif op == "airduration":
-                self.airDuration = int(parts[1])
+                self.airDuration = float(parts[1])
             elif op == "smokedelay":
-                self.smokeStartDelay = int(parts[1])
+                self.smokeStartDelay = float(parts[1])
             elif op == "smokeduration":
-                self.smokeDuration = int(parts[1])
+                self.smokeDuration = float(parts[1])
             elif op == "smokeendearly":
-                self.nosmokeDuration = int(parts[1])
+                self.nosmokeDuration = float(parts[1])
+            elif op == "VOLUME_NORMAL":
+                audio.VOLUME_NORMAL = float(parts[1])
             else:
                 print("Commands: air <team> | noair | money <team> <delta> | "
                     "goal <team> | score <team> <delta> | profile <node> <+1/-1>| reset")
@@ -1137,7 +1139,7 @@ while running:
     if current_money_1 != last_money_1 or reset1:
         background_surface1.blit(money_cover, (2 * SCALE_FACTOR, 0))
         background_surface2.blit(money_cover, (BASE_WIDTH - money_cover.get_width() - 2 * SCALE_FACTOR, 0))
-        money_text_1 = font.render(f"{controller.money[1] // 20}", True, RED)
+        money_text_1 = font.render(f"{controller.money[1] // controller.airCost}", True, RED)
         background_surface1.blit(wind_img1, (20 * SCALE_FACTOR + money_text_1.get_width(), -10 * SCALE_FACTOR))
         background_surface2.blit(wind_img, (BASE_WIDTH - 20 * SCALE_FACTOR - wind_img.get_width() - money_text_1.get_width(), -10 * SCALE_FACTOR))
         background_surface1.blit(money_text_1, (10 * SCALE_FACTOR, 8 * SCALE_FACTOR))
@@ -1151,7 +1153,7 @@ while running:
     if current_money_2 != last_money_2 or reset1:
         background_surface2.blit(money_cover, (2 * SCALE_FACTOR, 0))
         background_surface1.blit(money_cover, (BASE_WIDTH - money_cover.get_width() - 2 * SCALE_FACTOR, 0))
-        money_text_2 = font.render(f"{controller.money[2] // 20}", True, RED)
+        money_text_2 = font.render(f"{controller.money[2] // controller.airCost}", True, RED)
         background_surface2.blit(wind_img1, (20 * SCALE_FACTOR + money_text_2.get_width(), -10 * SCALE_FACTOR))
         background_surface1.blit(wind_img, (BASE_WIDTH - 20 * SCALE_FACTOR - wind_img.get_width() - money_text_2.get_width(), -10 * SCALE_FACTOR))
         background_surface1.blit(money_text_2, (BASE_WIDTH - (10 * SCALE_FACTOR + money_text_2.get_width()), 8 * SCALE_FACTOR))
