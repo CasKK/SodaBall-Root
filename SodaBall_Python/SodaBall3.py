@@ -1,6 +1,6 @@
 import os
 os.environ.setdefault("DISPLAY", ":0")
-os.environ.setdefault("XAUTHORITY", "/home/sodaballpi/.Xauthority")  # adjust username
+os.environ.setdefault("XAUTHORITY", "/home/sodaballpi/.Xauthority")
 import serial
 import serial.tools.list_ports
 import crcmod
